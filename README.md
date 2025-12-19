@@ -6,6 +6,7 @@ A collection of containerized command-line tools designed for security, portabil
 
 | Tool | Description | Documentation |
 | :--- | :--- | :--- |
+| **gemini-base** | Base image with Node.js 20, Security Updates, and System Tools. | N/A |
 | **gemini-cli** | Wrapper for `@google/gemini-cli`. Features persistent auth, context mounting, and seamless TTY handling. | [Read Docs](images/gemini-cli/README.md) |
 
 ## Getting Started
@@ -16,14 +17,9 @@ A collection of containerized command-line tools designed for security, portabil
 - Bash
 
 ### Global Build
-To build all tools in the toolbox:
+To build all tools in the toolbox (Base + CLI):
 ```bash
 make build
-```
-
-To build a specific tool:
-```bash
-make -C images/gemini-cli build
 ```
 
 ### Installation
@@ -42,9 +38,6 @@ ln -s $(pwd)/bin/gemini-docker ~/.local/bin/gemini-docker
 ├── bin/                    # Wrapper Scripts (User Interface)
 │   └── gemini-docker
 └── images/                 # Tool Definitions
-    └── gemini-cli/
-        ├── Dockerfile
-        ├── Makefile
-        ├── README.md
-        └── ...
+    ├── gemini-base/        # Base OS Image
+    └── gemini-cli/         # Application Image
 ```
