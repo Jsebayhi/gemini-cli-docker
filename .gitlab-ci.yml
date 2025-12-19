@@ -19,10 +19,14 @@ build_image:
   variables:
     DOCKER_DRIVER: overlay2
   script:
-    - cd images/gemini-cli
-    - docker build -t $DOCKER_IMAGE_NAME:$DOCKER_IMAGE_TAG .
-    - mkdir -p ../../dist
-    - docker save -o ../../dist/image.tar $DOCKER_IMAGE_NAME:$DOCKER_IMAGE_TAG
+    # Install Make to use our standard build system
+    - apk add --no-cache make
+    # Use the Makefile to build images in the correct order
+    - make build
+    # Tag the final image for the artifact export
+    - docker tag gemini-cli:latest $DOCKER_IMAGE_NAME:$DOCKER_IMAGE_TAG
+    - mkdir -p dist
+    - docker save -o dist/image.tar $DOCKER_IMAGE_NAME:$DOCKER_IMAGE_TAG
   artifacts:
     paths:
       - dist/image.tar
