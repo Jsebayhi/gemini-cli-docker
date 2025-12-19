@@ -36,6 +36,10 @@ while [[ $# -gt 0 ]]; do
         EXTRA_DOCKER_ARGS+=("${SPLIT_ARGS[@]}")
         shift; shift 
         ;; 
+    -v|--volume)
+        EXTRA_DOCKER_ARGS+=("-v" "$2")
+        shift; shift
+        ;;
     --help)        show_help; exit 0 ;;
     --)            shift; ARGS+=("$@"); break ;;
     *)             ARGS+=("$1");       shift ;;
