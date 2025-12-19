@@ -30,8 +30,12 @@ RUN npm install -g @google/gemini-cli \
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# 5. Set Workdir
+# 5. Create Extensions Directory
+# This folder is intended for mounting local extensions via Docker volumes
+RUN mkdir -p /home/gemini/gemini_local_extensions
+
+# 6. Set Workdir
 WORKDIR /home/gemini/workspace
 
-# 6. Entrypoint
+# 7. Entrypoint
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh", "gemini"]

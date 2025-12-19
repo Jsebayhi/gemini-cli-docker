@@ -10,7 +10,7 @@ To provide a portable, containerized environment for the Google Gemini CLI that 
 *   **REQ-F-02 (Project Awareness):** The system must grant the Gemini Agent read/write access to the host's current working directory to perform code analysis and modifications.
 *   **REQ-F-03 (Agent Tooling):** The runtime environment must provide a standard, rich suite of Linux command-line utilities. The Agent assumes the presence of standard GNU tools (`ls`, `grep`, `find`, `awk`, `sed`, `ps`) to explore and manipulate the codebase.
 *   **REQ-F-04 (Authentication):** The system must support the CLI's OAuth web-flow, allowing the user to authenticate via a browser on the host machine.
-*   **REQ-F-05 (Extension Support):** The system must support installing and running Gemini CLI extensions. Installed extensions (in `~/.gemini`) must persist. Local development extensions must be mountable via runtime arguments.
+*   **REQ-F-05 (Extension Support):** The system must support installing and running Gemini CLI extensions. Installed extensions (in `~/.gemini`) must persist. Local development extensions must be mountable into the dedicated `~/gemini_local_extensions` directory.
 *   **REQ-F-06 (Sandboxing & Containment):** The primary architectural goal is to contain the Gemini CLI agent. It must be restricted to modifying files *only* within the explicitly mounted project directory and its own configuration files. It must **not** have write access to the host's OS system files, user home directory (outside of config), or other projects, preventing accidental corruption or deletion of sensitive external data.
 
 ### 2.2. Non-Functional Requirements

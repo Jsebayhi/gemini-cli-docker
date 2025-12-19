@@ -51,9 +51,14 @@ gemini-docker --config ~/.gemini-work
 ```
 
 **Local Extensions:**
-To use a locally developed extension, mount it into the container using `--docker-args`.
+To use a locally developed extension, mount it into the dedicated `gemini_local_extensions` folder using `--docker-args`.
+
 ```bash
-gemini-docker --docker-args "-v /path/to/my-extension:/extensions" -- --extensions /extensions/my-extension
+# Mount your local extension source code
+gemini-docker --docker-args "-v /path/to/my-extension:/home/gemini/gemini_local_extensions/my-extension" 
+
+# Then, inside the CLI, install it from the dedicated folder
+# /extension /home/gemini/gemini_local_extensions/my-extension
 ```
 
 **Debug Mode (Shell):**
