@@ -1,0 +1,31 @@
+# Tier 3: The Full Application
+# Combines the heavy SDKs (Stack) with the latest Gemini CLI.
+
+FROM gemini-stack:latest
+
+# 1. Install Gemini CLI
+# We accept the same build arguments if needed, but usually latest is fine
+# We runs 'npm audit fix' inside the package folder to patch sub-dependency CVEs
+# Note: We must generate a package-lock.json first because global installs don't keep it
+RUN npm install -g @google/gemini-cli \
+    && cd $(npm root -g)/@google/gemini-cli \
+    && npm install --package-lock-only \
+    && npm audit fix --only=prod \
+    && npm cache clean --force
+
+# 2. Copy Entrypoint (Reuse the robust one we wrote)
+# We assume the build context includes the entrypoint from the sibling folder
+# OR we can just create a new one. To keep it DRY, we should copy it.
+# For now, I will write a simple Makefile to copy the entrypoint before build.
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# 3. Setup Extensions
+RUN mkdir -p /home/gemini/gemini_local_extensions
+
+# 4. Set Workdir
+WORKDIR /home/gemini/workspace
+
+# 5. Entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh", "gemini"]
+

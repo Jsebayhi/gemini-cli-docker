@@ -12,6 +12,7 @@ show_help() {
     echo "Usage: gemini-docker [OPTIONS] [-- APP_ARGS]"
     echo ""
     echo "Options:"
+    echo "  --full               Use the full image (Java 8/17/21, Go, Scala)"
     echo "  --config <path>      Path to configuration directory (default: ~/.gemini)"
     echo "  --project <path>     Path to project directory to mount as workspace (default: current dir)"
     echo "  --docker-args <str>  Additional arguments passed to 'docker run' (e.g., mounts)"
@@ -28,6 +29,7 @@ show_help() {
 ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
+    --full)        IMAGE_NAME="gemini-cli-full:latest"; shift ;;
     --config)      HOST_CONF_DIR="$2"; shift; shift ;;
     --project)     PROJECT_DIR="$2";   shift; shift ;;
     --debug)       IS_DEBUG=true;      shift ;;
@@ -50,6 +52,25 @@ done
 HOST_CONF_DIR=$(realpath -m "$HOST_CONF_DIR")
 mkdir -p "$HOST_CONF_DIR"
 
+# 2.1 Pre-create Host Cache Directories (As User)
+# We do this to prevent Docker from creating them as 'root' if they don't exist
+REQUIRED_DIRS=(
+    "${HOME}/.m2"
+    "${HOME}/.gradle"
+    "${HOME}/.sbt"
+    "${HOME}/.ivy2"
+    "${HOME}/.cache/coursier"
+    "${HOME}/go/pkg/mod"
+    "${HOME}/.cache/go-build"
+)
+
+for dir in "${REQUIRED_DIRS[@]}"; do
+    if [ ! -d "$dir" ]; then
+        # echo "Initializing missing cache directory: $dir"
+        mkdir -p "$dir"
+    fi
+done
+
 PROJECT_DIR=$(realpath -m "$PROJECT_DIR")
 if [ ! -d "$PROJECT_DIR" ]; then
     echo "Error: Project directory '$PROJECT_DIR' does not exist." >&2
@@ -62,6 +83,14 @@ DOCKER_CMD=(
   --net=host
   --volume "${PROJECT_DIR}:/home/gemini/workspace"
   --volume "${HOST_CONF_DIR}:/home/gemini/.gemini"
+  # Shared Host Caches (Performance & Convenience)
+  --volume "${HOME}/.m2:/home/gemini/.m2"
+  --volume "${HOME}/.gradle:/home/gemini/.gradle"
+  --volume "${HOME}/.sbt:/home/gemini/.sbt"
+  --volume "${HOME}/.ivy2:/home/gemini/.ivy2"
+  --volume "${HOME}/.cache/coursier:/home/gemini/.cache/coursier"
+  --volume "${HOME}/go/pkg/mod:/home/gemini/go/pkg/mod"
+  --volume "${HOME}/.cache/go-build:/home/gemini/.cache/go-build"
   --env DEFAULT_UID="$(id -u)"
   --env DEFAULT_GID="$(id -g)"
   --env TERM

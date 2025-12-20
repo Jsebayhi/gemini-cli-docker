@@ -8,23 +8,31 @@
 help:
 	@echo "Project Orchestration"
 	@echo "====================="
-	@echo "  make build       : Build all images (Base -> CLI)"
+	@echo "  make build       : Build ALL images (Base -> Stack -> Full & Light)"
 	@echo "  make rebuild     : Force rebuild (no cache) of all images"
 	@echo "  make scan        : Run security scan (Trivy) on built images"
 
-# Sequential build to ensure Base is ready before CLI
 build:
-	@echo ">> Building gemini-base..."
+	@echo ">> [1/4] Building gemini-base..."
 	$(MAKE) -C images/gemini-base build
-	@echo ">> Building gemini-cli..."
+	@echo ">> [2/4] Building gemini-stack (depends on base)..."
+	$(MAKE) -C images/gemini-stack build
+	@echo ">> [3/4] Building gemini-cli (Light)..."
 	$(MAKE) -C images/gemini-cli build
+	@echo ">> [4/4] Building gemini-cli-full (depends on stack)..."
+	$(MAKE) -C images/gemini-cli-full build
 
-# Sequential rebuild
 rebuild:
-	@echo ">> Rebuilding gemini-base (no cache)..."
+	@echo ">> [1/4] Rebuilding gemini-base..."
 	$(MAKE) -C images/gemini-base rebuild
-	@echo ">> Rebuilding gemini-cli (no cache)..."
+	@echo ">> [2/4] Rebuilding gemini-stack..."
+	$(MAKE) -C images/gemini-stack rebuild
+	@echo ">> [3/4] Rebuilding gemini-cli..."
 	$(MAKE) -C images/gemini-cli rebuild
+	@echo ">> [4/4] Rebuilding gemini-cli-full..."
+	$(MAKE) -C images/gemini-cli-full rebuild
+
+# Security Scan (Delegate to components)
 
 scan:
 
@@ -36,3 +44,6 @@ scan:
 
 	$(MAKE) -C images/gemini-cli scan
 
+	@echo ">> Scanning gemini-cli-full..."
+
+	$(MAKE) -C images/gemini-cli-full scan
