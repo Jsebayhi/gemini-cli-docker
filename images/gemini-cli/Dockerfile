@@ -3,7 +3,10 @@ FROM gemini-base:latest
 
 # 1. Install Gemini CLI
 # Clean cache to save space
+# We runs 'npm audit fix' inside the package folder to patch sub-dependency CVEs
 RUN npm install -g @google/gemini-cli \
+    && cd $(npm root -g)/@google/gemini-cli \
+    && npm audit fix --only=prod \
     && npm cache clean --force
 
 # 4. Copy Entrypoint
