@@ -77,11 +77,14 @@ if [ ! -d "$PROJECT_DIR" ]; then
     exit 1
 fi
 
+# Extract project name for prettier mount point
+PROJECT_NAME=$(basename "$PROJECT_DIR")
+
 # 3. Build Docker Command
 DOCKER_CMD=(
   docker run --rm -it
   --net=host
-  --volume "${PROJECT_DIR}:/home/gemini/workspace"
+  --volume "${PROJECT_DIR}:/home/gemini/${PROJECT_NAME}"
   --volume "${HOST_CONF_DIR}:/home/gemini/.gemini"
   # Shared Host Caches (Performance & Convenience)
   --volume "${HOME}/.m2:/home/gemini/.m2"
@@ -98,7 +101,7 @@ DOCKER_CMD=(
   --env LC_ALL
   --env HTTP_PROXY --env HTTPS_PROXY --env NO_PROXY
   --env http_proxy --env https_proxy --env no_proxy
-  --workdir /home/gemini/workspace
+  --workdir "/home/gemini/${PROJECT_NAME}"
   "${EXTRA_DOCKER_ARGS[@]}"
 )
 
