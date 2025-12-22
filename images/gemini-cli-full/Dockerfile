@@ -5,9 +5,11 @@ FROM gemini-stack:latest
 
 # 1. Install Gemini CLI
 # We accept the same build arguments if needed, but usually latest is fine
-# We runs 'npm audit fix' inside the package folder to patch sub-dependency CVEs
-# Note: We must generate a package-lock.json first because global installs don't keep it
-RUN npm install -g @google/gemini-cli \
+# Added --verbose to debug slow install
+# Added --mount=type=cache to speed up rebuilds (persists ~/.npm)
+# Added id=gemini-npm-cache to allow surgical pruning
+RUN --mount=type=cache,target=/root/.npm,id=gemini-npm-cache \
+    npm install -g --verbose @google/gemini-cli \
     && cd $(npm root -g)/@google/gemini-cli \
     && npm install --package-lock-only \
     && npm audit fix --only=prod \

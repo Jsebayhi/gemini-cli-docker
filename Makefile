@@ -11,6 +11,7 @@ help:
 	@echo "  make build       : Build ALL images (Base -> Stack -> Full & Light)"
 	@echo "  make rebuild     : Force rebuild (no cache) of all images"
 	@echo "  make scan        : Run security scan (Trivy) on built images"
+	@echo "  make clean-cache : Prune the npm build cache (frees disk space)"
 
 build:
 	@echo ">> [1/4] Building gemini-base..."
@@ -47,3 +48,8 @@ scan:
 	@echo ">> Scanning gemini-cli-full..."
 
 	$(MAKE) -C images/gemini-cli-full scan
+
+# Clean the specific build cache for this project
+clean-cache:
+	@echo ">> Pruning gemini-npm-cache..."
+	docker builder prune --force --filter id=gemini-npm-cache
