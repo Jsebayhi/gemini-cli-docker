@@ -30,7 +30,11 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     findutils \
     xsel \
     vim \
-    && rm -rf /var/lib/apt/lists/*
+    bash-completion \
+    locales \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
+    && locale-gen
 
 # 3. Configure Python for "Toolbox" Usage
 # - Allow 'gemini' user (and others) to install packages globally
@@ -44,6 +48,7 @@ RUN chmod -R 777 /usr/local/lib/python* \
     && chmod 777 /usr/local/bin
 
 # 4. Shell Configuration
-# Force bash to append history to disk after every command.
-# This ensures history is saved even if the container is killed.
-RUN echo 'export PROMPT_COMMAND="history -a"' >> /etc/bash.bashrc
+# - Enable bash completion
+# - Force bash to append history to disk after every command (history -a)
+RUN echo "if [ -f /usr/share/bash-completion/bash_completion ]; then . /usr/share/bash-completion/bash_completion; fi" >> /etc/bash.bashrc && \
+    echo 'export PROMPT_COMMAND="history -a"' >> /etc/bash.bashrc
