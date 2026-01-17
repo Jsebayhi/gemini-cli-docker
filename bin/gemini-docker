@@ -144,7 +144,7 @@ if [ "$USE_BASH" = true ]; then
     echo "Starting in BASH mode..."
     "${DOCKER_CMD[@]}" \
       --entrypoint /usr/local/bin/docker-entrypoint.sh \
-      "$IMAGE_NAME" bash
+      "$IMAGE_NAME" bash "${ARGS[@]}"
 else
     "${DOCKER_CMD[@]}" \
       "$IMAGE_NAME" "${ARGS[@]}"
