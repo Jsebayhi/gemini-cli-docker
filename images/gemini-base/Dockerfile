@@ -32,6 +32,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     vim \
     bash-completion \
     locales \
+    curl \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/* \
     && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
     && locale-gen

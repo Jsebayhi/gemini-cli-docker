@@ -15,6 +15,12 @@ RUN --mount=type=cache,target=/root/.npm,id=gemini-npm-cache \
     && (npm audit fix --only=prod || true) \
     && npm cache clean --force
 
+# Patch IDE Host Detection
+RUN TARGET_FILE=$(npm root -g)/@google/gemini-cli/node_modules/@google/gemini-cli-core/dist/src/ide/ide-client.js \
+    && grep -q "return isInContainer ? 'host.docker.internal' : '127.0.0.1'" "$TARGET_FILE" \
+    || (echo "Error: Failed to find IDE host detection logic in $TARGET_FILE. Upstream code may have changed." && exit 1) \
+    && sed -i "s/return isInContainer ? 'host.docker.internal' : '127.0.0.1'/return process.env.GEMINI_CLI_IDE_SERVER_HOST || (isInContainer ? 'host.docker.internal' : '127.0.0.1')/" "$TARGET_FILE"
+
 # 2. Copy Entrypoint (Reuse the robust one we wrote)
 # We assume the build context includes the entrypoint from the sibling folder
 # OR we can just create a new one. To keep it DRY, we should copy it.

@@ -5,6 +5,14 @@ HOST_CONF_DIR="${HOME}/.gemini"
 PROJECT_DIR="$(pwd)"
 IMAGE_NAME="gemini-cli:latest"
 USE_BASH=false
+
+# Auto-detect VS Code environment
+if [[ "$TERM_PROGRAM" == "vscode" ]]; then
+    ENABLE_VSCODE_INTEGRATION=true
+else
+    ENABLE_VSCODE_INTEGRATION=false
+fi
+
 EXTRA_DOCKER_ARGS=()
 
 # Help Function
@@ -14,6 +22,7 @@ show_help() {
     echo "Options:"
     echo "  --full               Use the full image (Java 8/17/21, Go, Scala)"
     echo "  --preview            Use the preview image (Latest Beta CLI)"
+    echo "  --no-ide             Disable VS Code integration (bypass companion extension)"
     echo "  --config <path>      Path to configuration directory (default: ~/.gemini)"
     echo "  --project <path>     Path to project directory to mount as workspace (default: current dir)"
     echo "  --docker-args <str>  Additional arguments passed to 'docker run' (e.g., mounts)"
@@ -33,6 +42,7 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     --full)        IMAGE_NAME="gemini-cli-full:latest"; shift ;;
     --preview)     IMAGE_NAME="gemini-cli-preview:latest"; shift ;;
+    --no-ide)      ENABLE_VSCODE_INTEGRATION=false;   shift ;;
     --config)      HOST_CONF_DIR="$2"; shift; shift ;;
     --project)     PROJECT_DIR="$2";   shift; shift ;;
     --bash)        USE_BASH=true;      shift ;;
@@ -86,8 +96,13 @@ PROJECT_NAME=$(basename "$PROJECT_DIR")
 # 3. Build Docker Command
 DOCKER_CMD=(
   docker run --rm -it
+  # Network Configuration for IDE Integration:
+  # --net=host: Container shares host network stack (simplifies localhost connection)
   --net=host
-  --volume "${PROJECT_DIR}:/home/gemini/${PROJECT_NAME}"
+  # Path Mirroring for IDE Security Check:
+  # We mount the project at the EXACT SAME path as the host (not /home/gemini/workspace).
+  # The Gemini CLI checks that PWD inside match the Workspace Path in VS Code.
+  --volume "${PROJECT_DIR}:${PROJECT_DIR}"
   --volume "${HOST_CONF_DIR}:/home/gemini/.gemini"
   # Shared Host Caches (Performance & Convenience)
   --volume "${HOME}/.m2:/home/gemini/.m2"
@@ -104,9 +119,25 @@ DOCKER_CMD=(
   --env LC_ALL
   --env HTTP_PROXY --env HTTPS_PROXY --env NO_PROXY
   --env http_proxy --env https_proxy --env no_proxy
-  --workdir "/home/gemini/${PROJECT_NAME}"
+  --workdir "${PROJECT_DIR}"
   "${EXTRA_DOCKER_ARGS[@]}"
 )
+
+# Conditionally Add IDE Integration
+if [ "$ENABLE_VSCODE_INTEGRATION" = true ]; then
+    DOCKER_CMD+=(
+      # VS Code Integration:
+      # 1. TERM_PROGRAM*: Tells Gemini CLI we are inside VS Code (enables the feature).
+      # 2. GEMINI_CLI_IDE_*: Connection details passed from the Host Terminal.
+      #    - HOST=127.0.0.1: Our custom patch forces the CLI to use this instead of host.docker.internal.
+      --env TERM_PROGRAM
+      --env TERM_PROGRAM_VERSION
+      --env GEMINI_CLI_IDE_SERVER_PORT
+      --env GEMINI_CLI_IDE_AUTH_TOKEN
+      --env GEMINI_CLI_IDE_WORKSPACE_PATH
+      --env GEMINI_CLI_IDE_SERVER_HOST=127.0.0.1
+    )
+fi
 
 # 4. Execute
 if [ "$USE_BASH" = true ]; then
