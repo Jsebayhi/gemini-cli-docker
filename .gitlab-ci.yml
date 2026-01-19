@@ -5,44 +5,44 @@ stages:
   - build
   - test
 
-variables:
-  DOCKER_IMAGE_NAME: gemini-cli
-  DOCKER_IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+include:
+  - template: Security/SAST.gitlab-ci.yml
 
-# 1. Build the image and save it as an artifact
-# This allows us to scan it in the next stage without pushing to a registry
-build_image:
+stages:
+  - build
+  - test
+
+variables:
+  DOCKER_DRIVER: overlay2
+
+# 1. Build the images and save them as artifacts
+build_images:
   stage: build
   image: docker:24.0.5
   services:
     - docker:24.0.5-dind
-  variables:
-    DOCKER_DRIVER: overlay2
   script:
-    # Install Make to use our standard build system
     - apk add --no-cache make
-    # Use the Makefile to build images in the correct order
-    - make build
-    # Tag the final image for the artifact export
-    - docker tag gemini-cli:latest $DOCKER_IMAGE_NAME:$DOCKER_IMAGE_TAG
+    # Use the new 'make ci' target (Builds + Tags with Version)
+    - make ci
     - mkdir -p dist
-    - docker save -o dist/image.tar $DOCKER_IMAGE_NAME:$DOCKER_IMAGE_TAG
+    # Save all 3 variants into one tarball for transport
+    - docker save -o dist/images.tar gemini-toolbox/cli:latest gemini-toolbox/cli-preview:latest gemini-toolbox/cli-full:latest
   artifacts:
     paths:
-      - dist/image.tar
+      - dist/images.tar
     expire_in: 1 hour
 
 # 2. Security Scanning with Trivy
-# Scans the built image for OS (Debian) and Application (Node) vulnerabilities
 trivy_scan:
   stage: test
   image: 
     name: aquasec/trivy:latest
     entrypoint: [""]
-  needs: ["build_image"]
+  needs: ["build_images"]
   script:
-    # Scan the saved tarball
-    # 1. Report ALL vulnerabilities (Informational, exit 0)
-    - trivy image --input dist/image.tar --exit-code 0
-    # 2. Fail ONLY on CRITICAL fixable vulnerabilities (Gatekeeper, exit 1)
-    - trivy image --input dist/image.tar --severity CRITICAL --exit-code 1 --ignore-unfixed
+    # Scan the tarball (Trivy will see all images inside)
+    # 1. Report ALL vulnerabilities
+    - trivy image --input dist/images.tar --exit-code 0
+    # 2. Fail ONLY on CRITICAL fixable vulnerabilities
+    - trivy image --input dist/images.tar --severity CRITICAL --exit-code 1 --ignore-unfixed
