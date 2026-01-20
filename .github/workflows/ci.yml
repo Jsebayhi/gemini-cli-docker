@@ -68,16 +68,12 @@ jobs:
           REPO="${{ secrets.DOCKER_HUB_USER }}/gemini-toolbox"
           
           # --- Stable ---
-          # Tags: :latest, :latest-stable, :X.Y.Z, :X.Y.Z-stable
-          docker tag gemini-toolbox/cli:latest $REPO:latest
+          # Tags: :latest-stable, :X.Y.Z-stable
           docker tag gemini-toolbox/cli:latest $REPO:latest-stable
-          docker push $REPO:latest
           docker push $REPO:latest-stable
           
           VERSION=$(docker run --rm --entrypoint="" gemini-toolbox/cli:latest gemini --version | tr -d '\r')
-          docker tag gemini-toolbox/cli:latest $REPO:$VERSION
           docker tag gemini-toolbox/cli:latest $REPO:$VERSION-stable
-          docker push $REPO:$VERSION
           docker push $REPO:$VERSION-stable
 
           # --- Preview ---

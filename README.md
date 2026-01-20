@@ -140,7 +140,7 @@ docker run --rm -it \
   --env TERM_PROGRAM=vscode \
   --volume "$PWD:$PWD" \
   --workdir "$PWD" \
-  jsebayhi/gemini-toolbox:latest \
+  jsebayhi/gemini-toolbox:latest-stable \
   "Explain this code"
 ```
 
