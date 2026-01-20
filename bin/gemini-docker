@@ -3,7 +3,8 @@
 # Configuration
 HOST_CONF_DIR="${HOME}/.gemini"
 PROJECT_DIR="$(pwd)"
-IMAGE_NAME="gemini-toolbox/cli:latest"
+DOCKER_HUB_USER="${DOCKER_HUB_USER:-jsebayhi}" # Allow override via env var
+VARIANT="latest"
 USE_BASH=false
 
 # Auto-detect VS Code environment
@@ -40,8 +41,8 @@ show_help() {
 ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --full)        IMAGE_NAME="gemini-toolbox/cli-full:latest"; shift ;;
-    --preview)     IMAGE_NAME="gemini-toolbox/cli-preview:latest"; shift ;;
+    --full)        VARIANT="full"; shift ;;
+    --preview)     VARIANT="preview"; shift ;;
     --no-ide)      ENABLE_VSCODE_INTEGRATION=false;   shift ;;
     --config)      HOST_CONF_DIR="$2"; shift; shift ;;
     --project)     PROJECT_DIR="$2";   shift; shift ;;
@@ -50,7 +51,7 @@ while [[ $# -gt 0 ]]; do
         read -ra SPLIT_ARGS <<< "$2"
         EXTRA_DOCKER_ARGS+=("${SPLIT_ARGS[@]}")
         shift; shift 
-        ;; 
+        ;;
     -v|--volume)
         EXTRA_DOCKER_ARGS+=("-v" "$2")
         shift; shift
@@ -92,6 +93,30 @@ fi
 
 # Extract project name for prettier mount point
 PROJECT_NAME=$(basename "$PROJECT_DIR")
+
+# 2.2 Resolve Image Name (Local vs Remote)
+if [ "$VARIANT" == "full" ]; then
+    LOCAL_TAG="gemini-toolbox/cli-full:latest"
+    REMOTE_TAG="${DOCKER_HUB_USER}/gemini-toolbox:latest-full"
+elif [ "$VARIANT" == "preview" ]; then
+    LOCAL_TAG="gemini-toolbox/cli-preview:latest"
+    REMOTE_TAG="${DOCKER_HUB_USER}/gemini-toolbox:latest-preview"
+else
+    LOCAL_TAG="gemini-toolbox/cli:latest"
+    REMOTE_TAG="${DOCKER_HUB_USER}/gemini-toolbox:latest-stable"
+fi
+
+# Check if local image exists
+if docker image inspect "$LOCAL_TAG" >/dev/null 2>&1; then
+    IMAGE_NAME="$LOCAL_TAG"
+else
+    echo ">> Local image '$LOCAL_TAG' not found."
+    echo ">> Falling back to published image '$REMOTE_TAG'..."
+    IMAGE_NAME="$REMOTE_TAG"
+    
+    # Optional: Check if we should pull to be sure we have the latest remote
+    # docker pull "$REMOTE_TAG" || true
+fi
 
 # 3. Build Docker Command
 DOCKER_CMD=(
