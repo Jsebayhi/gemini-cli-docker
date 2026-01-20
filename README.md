@@ -8,6 +8,8 @@
 > **Securely sandbox the Gemini CLI** to execute scripts and commands without risking host integrity. Manage multiple accounts on one machine with full **VS Code Companion Mode** support. Includes shared dependency caches for instant project compilation (Java, Go, Node).
 > **zero-config, secure sandbox** for safe experimentation. *Incoming: Native remote access.*
 
+**📅 Auto-Updates:** Images are rebuilt automatically every Friday morning (UTC) to include the latest `@google/gemini-cli` release.
+
 ## Why use this?
 
 *   🔒 **Sandboxed & Secure:** Don't let AI-generated scripts run directly on your OS. Isolate them in a disposable container.
@@ -41,6 +43,15 @@ gemini-docker "Explain the code in this directory"
 # Execute a prompt and stay in interactive mode
 gemini-docker -i "Help me refactor this project"
 ```
+
+### 3. Update
+To keep your sandbox fresh with the latest Gemini features:
+
+```bash
+gemini-docker update
+```
+
+**Note:** If your local image is older than 7 days, the script will gently remind you to update.
 
 ## Features
 

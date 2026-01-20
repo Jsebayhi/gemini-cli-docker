@@ -30,6 +30,9 @@ show_help() {
     echo "  --bash               Start a bash shell instead of the Gemini CLI"
     echo "  --help               Show this help message"
     echo ""
+    echo "Commands:"
+    echo "  update               Force update the Docker image from the registry"
+    echo ""
     echo "Examples:"
     echo "  gemini-docker chat"
     echo "  gemini-docker --preview chat"
@@ -57,6 +60,7 @@ while [[ $# -gt 0 ]]; do
         shift; shift
         ;;
     --help)        show_help; exit 0 ;;
+    update)        FORCE_UPDATE=true; shift ;;
     --)            shift; ARGS+=("$@"); break ;;
     *)             ARGS+=("$1");       shift ;;
   esac
@@ -110,12 +114,34 @@ fi
 if docker image inspect "$LOCAL_TAG" >/dev/null 2>&1; then
     IMAGE_NAME="$LOCAL_TAG"
 else
-    echo ">> Local image '$LOCAL_TAG' not found."
-    echo ">> Falling back to published image '$REMOTE_TAG'..."
+    # Fallback to remote image
     IMAGE_NAME="$REMOTE_TAG"
+fi
+
+# 2.3 Handle Explicit Update
+if [ "$FORCE_UPDATE" = true ]; then
+    if [[ "$IMAGE_NAME" == "$LOCAL_TAG" ]]; then
+        echo ">> Error: You are using a local image '$LOCAL_TAG'. Cannot update from registry."
+        echo ">> Run 'make rebuild' to update locally."
+        exit 1
+    fi
+    echo ">> Updating '$IMAGE_NAME'..."
+    docker pull "$IMAGE_NAME"
+    exit $?
+fi
+
+# 2.4 Stale Image Warning
+# Only if using remote image, it is a 'latest' tag, AND it is > 7 days old
+if [[ "$IMAGE_NAME" == *"$REMOTE_TAG"* ]] && [[ "$IMAGE_NAME" == *"latest"* ]] && docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+    CREATED=$(docker inspect --format='{{.Created}}' "$IMAGE_NAME")
+    CREATED_SEC=$(date -d "$CREATED" +%s 2>/dev/null || echo "0")
+    NOW_SEC=$(date +%s)
+    AGE=$(( (NOW_SEC - CREATED_SEC) / 86400 ))
     
-    # Optional: Check if we should pull to be sure we have the latest remote
-    # docker pull "$REMOTE_TAG" || true
+    # 7 days
+    if [ "$AGE" -ge 7 ]; then
+         echo ">> Tip: Your Gemini image is $AGE days old. Run 'gemini-docker update' to refresh."
+    fi
 fi
 
 # 3. Build Docker Command
