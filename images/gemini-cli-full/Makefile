@@ -27,7 +27,8 @@ tag-version:
 	echo ">> Detected version: $$VERSION"; \
 	docker tag $(IMAGE_NAME):$(IMAGE_TAG) $(IMAGE_NAME):$$VERSION
 
-ci: rebuild tag-version
+ci: rebuild
+	$(MAKE) tag-version
 
 scan:
 	@echo ">> Scanning $(IMAGE_NAME):$(IMAGE_TAG)..."

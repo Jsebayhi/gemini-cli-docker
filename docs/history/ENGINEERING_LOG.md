@@ -39,3 +39,15 @@ This ensures instant rebuilds for app changes while maintaining security.
 *   Implemented a local GitLab CI pipeline using `docker save` -> `tar`.
 *   Added `aquasec/trivy` to scan the tarball.
 *   Configured to fail on ANY fixable vulnerability.
+
+## 2026-01-20: CI Build Stabilization
+
+### 1. Parallel Build Race Condition
+**Problem:** The CI pipeline failed intermittently when using parallel builds (`make -j`). The `tag-version` target was executing before the `rebuild` target had finished creating the image, leading to "image not found" errors.
+**Solution:** Enforced sequential execution in component Makefiles.
+*   Changed `ci: rebuild tag-version` (parallel dependency) to a recipe-based execution:
+    ```makefile
+    ci: rebuild
+        $(MAKE) tag-version
+    ```
+*   This ensures `rebuild` completes successfully before `tag-version` attempts to query the image version, even when the global build is running in parallel.

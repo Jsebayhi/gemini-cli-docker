@@ -38,3 +38,10 @@ make build
 ### Context Management
 *   **Rule:** When working on a specific tool, **load its specific `GEMINI.md`**.
 *   **Why:** The root context is generic; the component context contains the critical "gotchas" for that specific image.
+
+## 5. Known Peculiarities & Gotchas
+
+### Make Parallelism (`-j`)
+*   **Gotcha:** The global `ci` target previously suffered from race conditions where `tag-version` ran before the image build completed.
+*   **Fix:** Component Makefiles now enforce sequential execution for `ci` (running `rebuild` then `tag-version` in a sub-shell).
+*   **Guidance:** You can safely run `make -j 4 ci` at the root level; the sub-Makefiles will handle their internal dependencies correctly.
