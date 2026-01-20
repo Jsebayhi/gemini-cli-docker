@@ -23,19 +23,32 @@ jobs:
       - name: Build & Tag (CI Mode)
         run: make ci
 
-      - name: Install Trivy
-        run: |
-          wget https://github.com/aquasec/trivy/releases/download/v0.48.3/trivy_0.48.3_Linux-64bit.deb
-          sudo dpkg -i trivy_0.48.3_Linux-64bit.deb
+      - name: Security Scan (Gemini CLI)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'gemini-toolbox/cli:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
 
-      - name: Security Scan (Trivy)
-        run: |
-          # 1. Informational scan
-          trivy image --exit-code 0 gemini-toolbox/cli:latest
-          # 2. Gatekeeper scan (Fail on critical fixable)
-          trivy image --severity CRITICAL --exit-code 1 --ignore-unfixed gemini-toolbox/cli:latest
-          trivy image --severity CRITICAL --exit-code 1 --ignore-unfixed gemini-toolbox/cli-preview:latest
-          trivy image --severity CRITICAL --exit-code 1 --ignore-unfixed gemini-toolbox/cli-full:latest
+      - name: Security Scan (Gemini Preview)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'gemini-toolbox/cli-preview:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+      - name: Security Scan (Gemini Full)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'gemini-toolbox/cli-full:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
 
       - name: Log in to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
