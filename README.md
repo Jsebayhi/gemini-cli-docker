@@ -6,13 +6,14 @@
 **GitHub Repository:** [Jsebayhi/gemini-cli-docker](https://github.com/Jsebayhi/gemini-cli-docker) | **Docker Hub:** [jsebayhi/gemini-toolbox](https://hub.docker.com/r/jsebayhi/gemini-toolbox)
 
 > **Securely sandbox the Gemini CLI** to execute scripts and commands without risking host integrity. Manage multiple accounts on one machine with full **VS Code Companion Mode** support. Includes shared dependency caches for instant project compilation (Java, Go, Node).
-> **zero-config, secure sandbox** for safe experimentation. *Incoming: Native remote access.*
+> **zero-config, secure sandbox** for safe experimentation with **Native Remote Access (Experimental)** via Tailscale.
 
 **📅 Auto-Updates:** Images are rebuilt automatically every Friday morning (UTC) to include the latest `@google/gemini-cli` release.
 
 ## Why use this?
 
 *   🔒 **Sandboxed & Secure:** Don't let AI-generated scripts run directly on your OS. Isolate them in a disposable container.
+*   📱 **Remote Access (Experimental):** Code from your phone or tablet anywhere. Integrated VPN support lets you safely access your dev environment on the go.
 *   ⚡ **VS Code Integration:** Connects natively to your host IDE. Open files, diff changes, and use the companion extension as if the CLI were installed locally.
 *   🚀 **Zero Config:** No Node.js, Python, or SDK setup required on your host. Just run the script.
 *   📦 **Persistent Caching:** Mounts your host's `~/.m2`, `~/.gradle`, and `~/.npm` caches so builds inside the container are instant.
@@ -60,6 +61,26 @@ This Docker wrapper supports the **Gemini CLI Companion** extension natively.
 1.  Open VS Code in your project folder.
 2.  Run `gemini-docker -i "/ide status"` from the Integrated Terminal.
 3.  **It just works.** The container connects to your host IDE to read context and diff files.
+
+### 📱 Remote Access (Experimental)
+Access your Gemini CLI session from your phone or tablet using integrated **Tailscale VPN** support. This works with zero host configuration, even if you are behind a corporate VPN.
+
+1.  **Get a Key:** Go to [Tailscale Settings > Keys](https://login.tailscale.com/admin/settings/keys). Generate a **Reusable Auth Key**.
+2.  **Run:** Pass the key or set the environment variable.
+    ```bash
+    # Option 1: One-shot
+    gemini-docker --remote tskey-auth-xxxxxx
+
+    # Option 2: Environment Variable
+    export GEMINI_REMOTE_KEY="tskey-auth-xxxxxx"
+    gemini-docker --remote
+    ```
+3.  **Connect:** Open the **Tailscale App** on your phone. You will see a new device named `gemini-<project>-<id>`. Access it at `http://<IP>:3000`.
+
+**✨ Real-time Mirroring:** Desktop and phone share the exact same session via `tmux`. What you type on one appears instantly on the other.
+
+> [!WARNING]
+> **VS Code Integration is disabled** when using Remote Access. This mode isolates the container's network stack for secure VPN connectivity, preventing it from talking to the host's IDE.
 
 ### 🧰 Multiple Flavors
 We provide three variants of the tool:

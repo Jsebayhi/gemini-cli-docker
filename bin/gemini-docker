@@ -27,6 +27,7 @@ show_help() {
     echo "  --config <path>      Path to configuration directory (default: ~/.gemini)"
     echo "  --project <path>     Path to project directory to mount as workspace (default: current dir)"
     echo "  --docker-args <str>  Additional arguments passed to 'docker run' (e.g., mounts)"
+    echo "  --remote <key>       Enable Tailscale VPN for remote access (Container Mode)"
     echo "  --bash               Start a bash shell instead of the Gemini CLI"
     echo "  --help               Show this help message"
     echo ""
@@ -35,13 +36,15 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  gemini-docker chat"
-    echo "  gemini-docker --preview chat"
+    echo "  gemini-docker --remote tskey-auth-xxxx chat"
     echo "  gemini-docker --config ~/.gemini-work -- --help"
-    echo "  gemini-docker --docker-args '-v /opt/ext:/ext' chat"
 }
 
 # 1. Parse Arguments
 ARGS=()
+REMOTE_MODE=false
+TAILSCALE_KEY="${GEMINI_REMOTE_KEY:-}"
+
 while [[ $# -gt 0 ]]; do
   case $1 in
     --full)        VARIANT="full"; shift ;;
@@ -50,6 +53,15 @@ while [[ $# -gt 0 ]]; do
     --config)      HOST_CONF_DIR="$2"; shift; shift ;;
     --project)     PROJECT_DIR="$2";   shift; shift ;;
     --bash)        USE_BASH=true;      shift ;;
+    --remote)      
+        REMOTE_MODE=true
+        # Optional argument: Check if next arg exists AND starts with 'tskey-'
+        if [[ -n "$2" && "$2" == tskey-* ]]; then
+            TAILSCALE_KEY="$2"
+            shift
+        fi
+        shift 
+        ;;
     --docker-args) 
         read -ra SPLIT_ARGS <<< "$2"
         EXTRA_DOCKER_ARGS+=("${SPLIT_ARGS[@]}")
@@ -67,6 +79,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # 2. Setup Directories
+# ... (rest of the directory setup logic) ...
+# (I'll keep the context small for the replacement tool)
 HOST_CONF_DIR=$(realpath -m "$HOST_CONF_DIR")
 mkdir -p "$HOST_CONF_DIR"
 
@@ -145,11 +159,26 @@ if [[ "$IMAGE_NAME" == *"$REMOTE_TAG"* ]] && [[ "$IMAGE_NAME" == *"latest"* ]] &
 fi
 
 # 3. Build Docker Command
+NETWORK_MODE="--net=host"
+if [ "$REMOTE_MODE" = true ]; then
+    if [ -z "$TAILSCALE_KEY" ]; then
+        echo "Error: --remote specified but no Tailscale Key found."
+        echo "Provide key via argument (--remote tskey-...) or environment (GEMINI_REMOTE_KEY)."
+        exit 1
+    fi
+    echo ">> Remote Mode detected. Isolating network stack..."
+    NETWORK_MODE="--network=bridge"
+    ENABLE_VSCODE_INTEGRATION=false
+    EXTRA_DOCKER_ARGS+=(
+        --env TAILSCALE_AUTH_KEY="$TAILSCALE_KEY"
+        --cap-add=NET_ADMIN
+        --device /dev/net/tun
+    )
+fi
+
 DOCKER_CMD=(
   docker run --rm -it
-  # Network Configuration for IDE Integration:
-  # --net=host: Container shares host network stack (simplifies localhost connection)
-  --net=host
+  $NETWORK_MODE
   # Path Mirroring for IDE Security Check:
   # We mount the project at the EXACT SAME path as the host (not /home/gemini/workspace).
   # The Gemini CLI checks that PWD inside match the Workspace Path in VS Code.

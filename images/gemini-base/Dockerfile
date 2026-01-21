@@ -21,6 +21,8 @@ COPY --from=node-source /usr/local /usr/local
 # - gosu: for user switching
 # - git, procps, findutils: Standard agent toolkit
 # - xsel: for /copy command
+# - tailscale: for remote access (Container-Encapsulated Mode)
+# - ttyd: Web terminal (Static binary download)
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     make \
     gosu \
@@ -35,6 +37,13 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     curl \
     wget \
     netcat-openbsd \
+    gnupg \
+    tmux \
+    && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg | tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null \
+    && curl -fsSL https://pkgs.tailscale.com/stable/debian/bookworm.tailscale-keyring.list | tee /etc/apt/sources.list.d/tailscale.list \
+    && apt-get update && apt-get install -y tailscale \
+    && curl -fsSL -o /usr/local/bin/ttyd https://github.com/tsl0922/ttyd/releases/download/1.7.7/ttyd.x86_64 \
+    && chmod +x /usr/local/bin/ttyd \
     && rm -rf /var/lib/apt/lists/* \
     && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
     && locale-gen
