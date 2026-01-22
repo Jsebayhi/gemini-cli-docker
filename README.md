@@ -22,7 +22,7 @@
 ## Quick Start
 
 ### 1. Install the Wrapper
-The `gemini-docker` script handles the complex Docker flags (networking, mounts, auth) for you.
+The `gemini-toolbox` script handles the complex Docker flags (networking, mounts, auth) for you.
 
 ```bash
 # Clone the repo (or just download the script)
@@ -30,26 +30,29 @@ git clone https://github.com/Jsebayhi/gemini-cli-toolbox.git
 cd gemini-cli-toolbox
 
 # Add to your PATH (Optional)
-ln -s $(pwd)/bin/gemini-docker ~/.local/bin/gemini-docker
+ln -s $(pwd)/bin/gemini-toolbox ~/.local/bin/gemini-toolbox
 ```
+
+> [!TIP]
+> **Retrocompatibility:** For existing users, the `gemini-docker` command is still available as a symbolic link to `gemini-toolbox`. Both commands are interchangeable.
 
 ### 2. Run
 ```bash
 # Start an interactive chat
-gemini-docker
+gemini-toolbox
 
 # Run a one-shot query
-gemini-docker "Explain the code in this directory"
+gemini-toolbox "Explain the code in this directory"
 
 # Execute a prompt and stay in interactive mode
-gemini-docker -i "Help me refactor this project"
+gemini-toolbox -i "Help me refactor this project"
 ```
 
 ### 3. Update
 To keep your sandbox fresh with the latest Gemini features:
 
 ```bash
-gemini-docker update
+gemini-toolbox update
 ```
 
 **Note:** If your local image is older than 7 days, the script will gently remind you to update.
@@ -59,7 +62,7 @@ gemini-docker update
 ### 🖥️ VS Code Companion Mode
 This Docker wrapper supports the **Gemini CLI Companion** extension natively.
 1.  Open VS Code in your project folder.
-2.  Run `gemini-docker -i "/ide status"` from the Integrated Terminal.
+2.  Run `gemini-toolbox -i "/ide status"` from the Integrated Terminal.
 3.  **It just works.** The container connects to your host IDE to read context and diff files.
 
 ### 📱 Remote Access (Experimental)
@@ -69,11 +72,11 @@ Access your Gemini CLI session from your phone or tablet using integrated **Tail
 2.  **Run:** Pass the key or set the environment variable.
     ```bash
     # Option 1: One-shot
-    gemini-docker --remote tskey-auth-xxxxxx
+    gemini-toolbox --remote tskey-auth-xxxxxx
 
     # Option 2: Environment Variable
     export GEMINI_REMOTE_KEY="tskey-auth-xxxxxx"
-    gemini-docker --remote
+    gemini-toolbox --remote
     ```
 3.  **Connect:** Open the **Tailscale App** on your phone. You will see a new device named `gemini-<project>-<id>`. Access it at `http://<IP>:3000`.
 
@@ -94,10 +97,10 @@ We provide three variants of the tool:
 **Example:**
 ```bash
 # Use the preview version
-gemini-docker --preview -i "Try out the latest beta features"
+gemini-toolbox --preview -i "Try out the latest beta features"
 
 # Use the full stack for compiling Java/Go code
-gemini-docker --full "Run the tests in this Java project"
+gemini-toolbox --full "Run the tests in this Java project"
 ```
 
 ### 🧹 Multi-Account Management
@@ -105,10 +108,10 @@ You can point the container to different configuration directories to isolate en
 
 ```bash
 # Use your personal account
-gemini-docker --config ~/.gemini-personal
+gemini-toolbox --config ~/.gemini-personal
 
 # Use your work account
-gemini-docker --config ~/.gemini-work
+gemini-toolbox --config ~/.gemini-work
 ```
 
 ## Advanced Usage
@@ -116,10 +119,10 @@ gemini-docker --config ~/.gemini-work
 ### 🚀 YOLO Mode & Resuming
 ```bash
 # Automatically accept all suggested actions (YOLO)
-gemini-docker --yolo "Fix the linting issues"
+gemini-toolbox --yolo "Fix the linting issues"
 
 # Resume the latest session
-gemini-docker --resume latest
+gemini-toolbox --resume latest
 ```
 
 ### 🐚 Bash Mode & Scripting
@@ -127,10 +130,10 @@ You can bypass the Gemini CLI entirely and use the container as a clean, disposa
 
 ```bash
 # Drop into a bash shell inside the container
-gemini-docker --bash
+gemini-toolbox --bash
 
 # Execute a single bash command
-gemini-docker --bash -c "echo 'Hello from inside Docker' && ls -la"
+gemini-toolbox --bash -c "echo 'Hello from inside Docker' && ls -la"
 ```
 
 ### 📂 Custom Volume Mounts
@@ -138,7 +141,7 @@ Use `-v` (or `--volume`) to mount additional directories from your host into the
 
 ```bash
 # Mount /opt/data on host to /data in container
-gemini-docker -v /opt/data:/data --bash -c "ls /data"
+gemini-toolbox -v /opt/data:/data --bash -c "ls /data"
 ```
 
 ### 📜 Persistent Bash History
@@ -146,7 +149,7 @@ To keep your command history across container restarts, mount your history file.
 
 ```bash
 # Persist .bash_history
-gemini-docker \
+gemini-toolbox \
   -v ~/.gemini_bash_history:/home/gemini/.bash_history \
   --bash
 ```

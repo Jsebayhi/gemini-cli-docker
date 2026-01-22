@@ -9,7 +9,7 @@ A modular "Gemini CLI Toolbox" repository containing multiple self-contained Doc
 
 | Directory | Purpose |
 | :--- | :--- |
-| `bin/` | **User Interface.** Wrapper scripts that users invoke directly. |
+| `bin/` | **User Interface.** Wrapper scripts (`gemini-toolbox`) that users invoke directly. |
 | `images/` | **Components.** Source code for each Docker image. |
 | `images/gemini-cli/` | **Gemini CLI.** [See Component Context](images/gemini-cli/GEMINI.md) |
 | `Makefile` | **Orchestrator.** Master makefile for global build tasks. |

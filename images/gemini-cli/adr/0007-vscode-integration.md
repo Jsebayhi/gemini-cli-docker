@@ -34,7 +34,7 @@ We have implemented a robust solution involving a **Source Code Patch** during t
     ```
 *   **Result:** This allows us to override the hardcoded behavior without forking the entire project.
 
-### 2. Wrapper Configuration (`bin/gemini-docker`)
+### 2. Wrapper Configuration (`bin/gemini-toolbox`)
 *   **Network:** Uses `--net=host`.
 *   **Environment Variable Management (Conditional):**
     *   **Auto-Detection:** The script checks `TERM_PROGRAM` to detect if it is running inside a VS Code terminal.

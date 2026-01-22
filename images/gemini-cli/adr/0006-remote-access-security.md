@@ -81,7 +81,7 @@ We adopt a **Hybrid Strategy** that supports two distinct modes of operation, al
     *   `suffix`: Short hash (first 4 chars of container ID) to allow multiple instances of the same project.
     *   The node shall be marked as `--ephemeral` to auto-cleanup the mesh dashboard on exit.
 
-**The Wrapper Script (`gemini-docker`) shall:**
+**The Wrapper Script (`gemini-toolbox`) shall:**
 *   Detect if Remote Mode is requested.
 *   **IF Remote:**
     *   Disable `--net=host`.

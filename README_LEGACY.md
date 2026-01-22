@@ -12,9 +12,9 @@ docker pull jsebayhi/gemini-cli-toolbox:latest-stable
 ```
 
 ### 2. Update the Wrapper Script
-If you use the `gemini-docker` wrapper, simply run the update command (or re-download it):
+If you use the `gemini-toolbox` wrapper, simply run the update command (or re-download it):
 ```bash
-gemini-docker update
+gemini-toolbox update
 ```
 
 ### 3. GitHub Repository & Legacy Source

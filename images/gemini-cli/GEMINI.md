@@ -29,7 +29,7 @@ make rebuild
 To inspect the container internals:
 ```bash
 # Run the wrapper with debug flag (from project root)
-bin/gemini-docker --debug
+bin/gemini-toolbox --debug
 ```
 
 ## 4. Known Peculiarities & Gotchas
