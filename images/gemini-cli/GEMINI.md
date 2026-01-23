@@ -11,7 +11,6 @@ A Debian-based Docker image wrapping the `@google/gemini-cli`. It focuses on sea
 | :--- | :--- |
 | `Dockerfile` | **The Environment.** Node.js 20 (Bookworm), `gosu`, and the CLI tool. |
 | `docker-entrypoint.sh` | **The Logic.** Runtime script that fixes permissions and switches user via `gosu`. |
-| `index.html` | **The UI.** Custom ttyd template for mobile-friendly remote access (keyboard handling). |
 | `Makefile` | **The Builder.** Local build commands (`build`, `rebuild`) for this image. |
 | `adr/` | **The Decisions.** Records explaining Debian vs Alpine, `gosu` usage, etc. |
 
@@ -33,6 +32,10 @@ bin/gemini-toolbox --debug
 ```
 
 ## 4. Known Peculiarities & Gotchas
+
+### Remote Access Behavior
+*   **Scrolling:** The entrypoint automatically generates a `~/.tmux.conf` with `mouse on` if one is missing. This enables scrolling in the web terminal (ttyd).
+*   **Session:** Remote access forces the session into `tmux`.
 
 ### The "Input Lag" Issue
 *   **Symptom:** Severe latency when typing in the interactive chat.

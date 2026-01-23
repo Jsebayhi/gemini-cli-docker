@@ -78,6 +78,19 @@ if [ -n "${TAILSCALE_AUTH_KEY:-}" ]; then
     echo ">> Remote Access Active. Hostname: ${TS_HOSTNAME}"
     echo ">> Find your IP in the Tailscale dashboard."
     
+    # --- Tmux Configuration ---
+    # Enable mouse support to allow scrolling in ttyd/browser
+    if [ ! -f "$HOME/.tmux.conf" ]; then
+        if [ "$DEBUG" = "true" ]; then
+            echo ">> Generating default .tmux.conf..." >&3
+        fi
+        {
+            echo "set -g mouse on"
+            echo "set -g history-limit 50000"
+        } > "$HOME/.tmux.conf"
+        chown "$UID:$GID" "$HOME/.tmux.conf"
+    fi
+
     # --- Session Mirroring (Tmux) ---
     echo ">> Starting Shared Session (Tmux)..."
     
