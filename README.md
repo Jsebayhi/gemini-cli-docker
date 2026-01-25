@@ -31,9 +31,6 @@ cd gemini-cli-toolbox
 ln -s $(pwd)/bin/gemini-toolbox ~/.local/bin/gemini-toolbox
 ```
 
-> [!TIP]
-> **Retrocompatibility:** For existing users, the `gemini-docker` command is still available as a symbolic link to `gemini-toolbox`. Both commands are interchangeable.
-
 ### 2. Run
 ```bash
 # Start an interactive chat
