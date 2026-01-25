@@ -30,11 +30,13 @@ show_help() {
     echo "  --docker-args <str>  Additional arguments passed to 'docker run' (e.g., mounts)"
     echo "  --remote <key>       Enable Tailscale VPN for remote access (Container Mode)"
     echo "  --bash               Start a bash shell instead of the Gemini CLI"
+    echo "  --detached           Start the container in background and exit (useful for Hub)"
     echo "  --help               Show this help message"
     echo ""
     echo "Commands:"
     echo "  update               Force update the Docker image from the registry"
     echo "  stop-hub             Stop the background Gemini Hub service"
+    echo "  connect <id>         Attach to a running background session"
     echo ""
     echo "Examples:"
     echo "  gemini-toolbox chat"
@@ -47,6 +49,7 @@ ARGS=()
 REMOTE_MODE=false
 TAILSCALE_KEY="${GEMINI_REMOTE_KEY:-}"
 ENABLE_DOCKER=true
+DETACHED_MODE=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -57,6 +60,7 @@ while [[ $# -gt 0 ]]; do
     --config)      HOST_CONF_DIR="$2"; shift; shift ;;
     --project)     PROJECT_DIR="$2";   shift; shift ;;
     --bash)        USE_BASH=true;      shift ;;
+    --detached)    DETACHED_MODE=true; shift ;;
     --remote)      
         REMOTE_MODE=true
         # Optional argument: Check if next arg exists AND starts with 'tskey-'
@@ -72,12 +76,13 @@ while [[ $# -gt 0 ]]; do
         shift; shift 
         ;;
     -v|--volume)
-        EXTRA_DOCKER_ARGS+=("-v" "$2")
+        EXTRA_MOUNTS+=("-v" "$2")
         shift; shift
         ;;
     --help)        show_help; exit 0 ;;
     update)        FORCE_UPDATE=true; shift ;;
     stop-hub)      STOP_HUB=true; shift ;;
+    connect)       CONNECT_ID="$2"; shift; shift ;;
     --)            shift; ARGS+=("$@"); break ;;
     *)             ARGS+=("$1");       shift ;;
   esac
@@ -188,7 +193,13 @@ if [ "$STOP_HUB" = true ]; then
     fi
 fi
 
-# 2.5 Stale Image Warning
+# 2.5 Handle Connect
+if [ -n "$CONNECT_ID" ]; then
+    echo ">> Connecting to session '$CONNECT_ID'..."
+    exec docker exec -it "$CONNECT_ID" gosu gemini tmux attach -t gemini
+fi
+
+# 2.6 Stale Image Warning
 # Only if using remote image, it is a 'latest' tag, AND it is > 7 days old
 if [[ "$IMAGE_NAME" == *"$REMOTE_TAG"* ]] && [[ "$IMAGE_NAME" == *"latest"* ]] && docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
     CREATED=$(docker inspect --format='{{.Created}}' "$IMAGE_NAME")
@@ -238,8 +249,9 @@ if [ "$REMOTE_MODE" = true ]; then
         echo "DEBUG: HUB_SCRIPT is at ${HUB_SCRIPT}"
         if [ -x "$HUB_SCRIPT" ]; then
              echo ">> Auto-starting Gemini Hub..."
-             echo "   (Stop with: gemini-hub stop)"
-             if "$HUB_SCRIPT" -d --key "$TAILSCALE_KEY" > /tmp/gemini-hub.log 2>&1; then
+             echo "   (Stop with: gemini-toolbox stop-hub)"
+             # Pass current project dir as a default workspace root for the Hub
+             if "$HUB_SCRIPT" -d --key "$TAILSCALE_KEY" --workspace "$PROJECT_DIR" > /tmp/gemini-hub.log 2>&1; then
                  echo ">> Hub started."
              else
                  echo ">> Warning: Failed to start Hub. Check /tmp/gemini-hub.log"
@@ -318,6 +330,13 @@ if [ "$ENABLE_VSCODE_INTEGRATION" = true ]; then
 fi
 
 # 4. Execute
+if [ "$DETACHED_MODE" = true ]; then
+    echo ">> Starting container in background..."
+    "${DOCKER_CMD[@]}" -d "$IMAGE_NAME" "${ARGS[@]}"
+    echo ">> Container started: ${GEMINI_SESSION_ID}"
+    exit 0
+fi
+
 if [ "$USE_BASH" = true ]; then
     echo "Starting in BASH mode..."
     "${DOCKER_CMD[@]}" \

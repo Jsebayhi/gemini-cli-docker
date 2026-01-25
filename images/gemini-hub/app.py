@@ -6,9 +6,14 @@ import sys
 import time
 import threading
 import signal
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, jsonify, request
 
 app = Flask(__name__)
+
+# --- Configuration ---
+HUB_ROOTS = [r for r in os.environ.get("HUB_ROOTS", "").split(":") if r]
+HOST_CONFIG_ROOT = os.environ.get("HOST_CONFIG_ROOT", "")
+HOST_HOME = os.environ.get("HOST_HOME", "")
 
 # HTML Template (Mobile First + Filtering)
 TEMPLATE = """
@@ -341,6 +346,53 @@ def home():
     data = get_tailscale_status()
     machines = parse_peers(data)
     return render_template_string(TEMPLATE, machines=machines)
+
+# --- Discovery & Browsing API ---
+
+@app.route('/api/roots')
+def get_roots():
+    """Returns the list of allowed workspace roots."""
+    return jsonify({"roots": HUB_ROOTS})
+
+@app.route('/api/configs')
+def get_configs():
+    """Lists subdirectories in the HOST_CONFIG_ROOT."""
+    configs = []
+    if os.path.isdir(HOST_CONFIG_ROOT):
+        configs = [d for d in os.listdir(HOST_CONFIG_ROOT) 
+                   if os.path.isdir(os.path.join(HOST_CONFIG_ROOT, d))]
+    configs.sort()
+    return jsonify({"configs": configs})
+
+@app.route('/api/browse')
+def browse():
+    """Lists subdirectories of a given path, restricted to HUB_ROOTS."""
+    path = request.args.get('path', '')
+    
+    if not path:
+        return jsonify({"error": "Path required"}), 400
+        
+    # Security: Ensure path is within one of the HUB_ROOTS
+    path = os.path.abspath(path)
+    allowed = any(path.startswith(os.path.abspath(root)) for root in HUB_ROOTS)
+    
+    if not allowed:
+        return jsonify({"error": "Access denied"}), 403
+        
+    if not os.path.isdir(path):
+        return jsonify({"error": "Not a directory"}), 404
+        
+    try:
+        # Only return directories
+        items = []
+        for item in os.listdir(path):
+            full_path = os.path.join(path, item)
+            if os.path.isdir(full_path) and not item.startswith('.'):
+                items.append(item)
+        items.sort()
+        return jsonify({"path": path, "directories": items})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     # Start the monitor thread

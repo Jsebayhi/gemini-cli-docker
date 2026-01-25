@@ -8,15 +8,10 @@ REMOTE_TAG="${DOCKER_HUB_USER}/gemini-cli-toolbox:latest-hub"
 CONTAINER_NAME="gemini-hub-service"
 PORT="8888"
 
-# Commands
-if [[ "$1" == "stop" ]]; then
-    echo ">> Stopping Gemini Hub..."
-    docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || echo ">> Hub is not running."
-    exit 0
-fi
-
 # Auth Key
 AUTH_KEY="${GEMINI_REMOTE_KEY:-}"
+WORKSPACE_ROOTS=()
+CONFIG_ROOT="${HOME}/.gemini/configs"
 
 # Parse Args
 MODE="-it"
@@ -24,15 +19,44 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     -d|--detach) MODE="-d"; shift ;;
     --key)       AUTH_KEY="$2"; shift; shift ;;
+    --workspace) WORKSPACE_ROOTS+=("$2"); shift; shift ;;
+    --config-root) CONFIG_ROOT="$2"; shift; shift ;;
+    stop)
+        echo ">> Stopping Gemini Hub..."
+        docker stop "$CONTAINER_NAME" >/dev/null 2>&1 || echo ">> Hub is not running."
+        exit 0
+        ;;
     *)           shift ;; # Ignore unknown args
   esac
 done
 
 if [ -z "$AUTH_KEY" ]; then
     echo "Error: TAILSCALE_KEY is required for the Hub."
-    echo "Usage: gemini-hub --key tskey-auth-..."
+    echo "Usage: gemini-hub --key tskey-auth-... [--workspace path] [--config-root path]"
     exit 1
 fi
+
+# Prepare Docker Args for Mounts
+EXTRA_MOUNTS=()
+ROOT_PATHS_LIST=""
+
+# 1. Mount Workspace Roots
+for root in "${WORKSPACE_ROOTS[@]}"; do
+    ABS_ROOT=$(realpath -m "$root")
+    if [ -d "$ABS_ROOT" ]; then
+        EXTRA_MOUNTS+=("-v" "${ABS_ROOT}:${ABS_ROOT}")
+        ROOT_PATHS_LIST="${ROOT_PATHS_LIST}${ABS_ROOT}:"
+    else
+        echo "Warning: Workspace root '$ABS_ROOT' does not exist. Skipping."
+    fi
+done
+# Remove trailing colon
+ROOT_PATHS_LIST=${ROOT_PATHS_LIST%:}
+
+# 2. Mount Config Root
+ABS_CONFIG_ROOT=$(realpath -m "$CONFIG_ROOT")
+mkdir -p "$ABS_CONFIG_ROOT"
+EXTRA_MOUNTS+=("-v" "${ABS_CONFIG_ROOT}:${ABS_CONFIG_ROOT}")
 
 # Resolve Image (Local vs Remote)
 if docker image inspect "$LOCAL_TAG" >/dev/null 2>&1; then
@@ -42,29 +66,21 @@ else
     IMAGE_NAME="$REMOTE_TAG"
 fi
 
-# Detect Host Docker GID
-HOST_DOCKER_GID=""
-if command -v getent >/dev/null 2>&1 && getent group docker >/dev/null 2>&1; then
-    HOST_DOCKER_GID=$(getent group docker | cut -d: -f3)
-fi
-
 echo ">> Starting Gemini Hub on port $PORT..."
 echo ">> Access at http://localhost:$PORT (Desktop)"
 echo ">> Access at http://gemini-hub:8888 (Mobile VPN)"
 
 # Run Container
-# --rm: Clean up on exit
-# --net=host: STILL REQUIRED to bind to the host interface properly for VPN + Local access
-# --device /dev/net/tun: For VPN
-# --cap-add=NET_ADMIN: For VPN
-# --volume /var/run/docker.sock: For Launcher support (DooD)
-
 docker run --rm $MODE \
     --name "$CONTAINER_NAME" \
     --net=host \
     --cap-add=NET_ADMIN \
     --device /dev/net/tun \
     --volume "/var/run/docker.sock:/var/run/docker.sock" \
+    "${EXTRA_MOUNTS[@]}" \
     --env HOST_DOCKER_GID="${HOST_DOCKER_GID}" \
     --env TAILSCALE_AUTH_KEY="$AUTH_KEY" \
+    --env HUB_ROOTS="${ROOT_PATHS_LIST}" \
+    --env HOST_CONFIG_ROOT="${ABS_CONFIG_ROOT}" \
+    --env HOST_HOME="${HOME}" \
     "$IMAGE_NAME"
