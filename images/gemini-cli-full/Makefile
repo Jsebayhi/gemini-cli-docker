@@ -14,13 +14,20 @@ help:
 	@echo "  make help     : Show this help message"
 
 pre-build:
+	@echo ">> Copying shared entrypoint..."
 	cp ../gemini-cli/docker-entrypoint.sh .
+
+clean-artifacts:
+	@echo ">> Cleaning artifacts..."
+	rm -f docker-entrypoint.sh
 
 build: pre-build
 	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	$(MAKE) clean-artifacts
 
 rebuild: pre-build
 	docker build --no-cache -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	$(MAKE) clean-artifacts
 
 tag-version:
 	@VERSION=$$(docker run --rm --entrypoint="" $(IMAGE_NAME):$(IMAGE_TAG) gemini --version | tr -d '\r'); \

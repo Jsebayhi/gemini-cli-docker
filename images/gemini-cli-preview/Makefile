@@ -14,11 +14,21 @@ help:
 	@echo "  make scan     : Run security scan (Trivy) on this image"
 	@echo "  make help     : Show this help message"
 
-build:
+build: pre-build
 	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	$(MAKE) clean-artifacts
 
-rebuild:
+rebuild: pre-build
 	docker build --no-cache -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	$(MAKE) clean-artifacts
+
+pre-build:
+	@echo ">> Copying shared entrypoint..."
+	cp ../gemini-cli/docker-entrypoint.sh .
+
+clean-artifacts:
+	@echo ">> Cleaning artifacts..."
+	rm -f docker-entrypoint.sh
 
 tag-version:
 	@VERSION=$$(docker run --rm --entrypoint="" $(IMAGE_NAME):$(IMAGE_TAG) gemini --version | tr -d '\r'); \
