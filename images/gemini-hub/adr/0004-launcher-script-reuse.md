@@ -8,55 +8,42 @@ Accepted (Refines [ADR-0003](./0003-launcher-path-mirroring.md))
 
 ## Context
 
-In [ADR-0003](./0003-launcher-path-mirroring.md), we decided to enable the Hub to launch new sessions by mirroring the host's filesystem path. The initial assumption was that the Hub would reimplement the `docker run` logic in Python to spawn sibling containers.
+In [ADR-0003](./0003-launcher-path-mirroring.md), we decided to enable the Hub to launch new sessions. We chose to **reuse the `gemini-toolbox` script** rather than reimplementing logic in Python.
 
-However, the `gemini-toolbox` bash script already contains complex, production-hardened logic for:
-*   Generating consistent session IDs (ADR-0003).
-*   Handling environment variables.
-*   Mounting user configuration and caches.
-*   Resolving image tags (local vs remote).
-
-Reimplementing this logic in Python creates a maintenance burden (two sources of truth) and risk of drift.
+We also identified a need for a seamless "Launch Remote, Continue Local" workflow. A user might start a session from their phone via the Hub, but later want to switch to their desktop terminal to continue working in the same session without restarting.
 
 ## Decision
 
-We will bundle the `gemini-toolbox` script into the Hub container at **build time**.
+We will bundle the `gemini-toolbox` script into the Hub container at **build time** and enhance it to support detached sessions and re-attachment.
 
 ### 1. Build-Time Copy
-We cannot rely on runtime mounting of the script because:
-*   The script on the host might be a symlink (difficult to mount correctly).
-*   It introduces a loose dependency on the host's state.
-
-Instead, we will:
-1.  Use the `Makefile` to copy `bin/gemini-toolbox` into the `images/gemini-hub/` context before building.
-2.  `COPY` it into the image at `/usr/local/bin/gemini-toolbox`.
+We copy `bin/gemini-toolbox` into the `images/gemini-hub/` context and bake it into the image.
 
 ### 2. Environment Mirroring
-To make the script believe it is running on the Host (so it generates correct Host paths for Docker-out-of-Docker mounts), we must mirror the relevant environment at runtime:
-
+To make the script believe it is running on the Host, we mirror the relevant environment at runtime:
 *   **Workspace:** Mirror mounted (as per ADR-0003).
-*   **Home Directory:** We must set the `HOME` environment variable inside the Hub container to match the Host's `HOME` path (e.g., `/home/user`).
-    *   *Why?* The script uses `~` or `$HOME` to locate config (`~/.gemini`) and cache (`~/.m2`).
-    *   *The Trick:* If the Hub container's `$HOME` is `/root` (internal), the script would generate `-v /root/.gemini:/...`. The Host Daemon would then look for `/root/.gemini` *on the Host*, which is wrong.
-    *   *The Fix:* By setting `HOME=/home/user`, the script generates `-v /home/user/.gemini:/...`, which is the correct Host path.
+*   **Home Directory:** We set `HOME` inside the Hub to match the Host's `HOME`.
 
-### 3. Execution Flow
-1.  User clicks "Launch" in Hub UI for path `/home/user/projects/foo`.
-2.  Hub Python Backend sets `cwd="/home/user/projects/foo"`.
-3.  Hub Python Backend sets `env["HOME"] = "/home/user"`.
-4.  Hub executes `subprocess.run(["gemini-toolbox", "--remote", ...])`.
-5.  The script runs inside the container:
-    *   It sees `pwd` as `/home/user/projects/foo` (valid inside due to mirror mount).
-    *   It sees `HOME` as `/home/user`.
-    *   It constructs the `docker run` command using these paths.
-6.  The Host Docker Daemon executes the command successfully because the paths match the Host filesystem.
+### 3. Execution Flow (Launch)
+1.  User clicks "Launch" in Hub UI.
+2.  Hub Python Backend calls `subprocess.run(["gemini-toolbox", "--detached", ...], env={"HOME": host_home})`.
+    *   The `--detached` flag tells the script to start the container and the internal `tmux` session but **skip** the final `docker attach` step.
+3.  The script (running inside container) sends the `docker run` command to the Host Daemon.
+4.  The session starts in the background on the Host.
+
+### 4. Execution Flow (Connect)
+To allow the user to pick up the session on the desktop:
+1.  We implement a `connect` command in `gemini-toolbox`.
+2.  User runs `gemini-toolbox connect <SESSION_ID>`.
+3.  The script executes `docker exec -it <SESSION_ID> gosu gemini tmux attach -t gemini`.
+4.  The user is instantly connected to the active session.
 
 ## Consequences
 
 ### Positive
-*   **Reliability:** The script is baked into the image, eliminating "missing file" or "broken symlink" errors at runtime.
-*   **Consistency:** The Hub uses the exact version of the script it was built with.
-*   **DRY:** Updates to session ID logic or default flags in the toolbox script automatically apply to the Hub.
+*   **Reliability:** The script is baked into the image.
+*   **Continuity:** Sessions are persistent and device-agnostic. You can start on mobile and finish on desktop.
+*   **DRY:** Single source of truth for session startup logic.
 
 ### Negative
-*   **Rebuild Requirement:** Updating the `gemini-toolbox` script requires rebuilding the Hub image to propagate the changes. This is acceptable as it adheres to the immutable infrastructure pattern.
+*   **Rebuild Requirement:** Updating the script requires rebuilding the Hub.
