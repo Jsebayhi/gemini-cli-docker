@@ -12,7 +12,7 @@ This plan details the steps to transform the Gemini Hub from a read-only dashboa
     *   Update Hub launch command to mount `/var/run/docker.sock`.
 
 ## Phase 2: Configuration & Path Logic (Multi-Root)
-*Goal: Allow the Hub to see and browse multiple host directories and config profiles.*
+*Goal: Allow the Hub to see multiple host directories and config profiles, and support seamless re-attachment.*
 
 1.  **Toolbox Script Update:**
     *   **Args:** Accept multiple `--workspace <path>` arguments.
@@ -20,7 +20,11 @@ This plan details the steps to transform the Gemini Hub from a read-only dashboa
     *   **Mounts:** Mirror-mount ALL workspace roots individually.
     *   **Mounts:** Mirror-mount the Config Root.
     *   **Env:** Pass `HUB_ROOTS` (list) and `HOST_CONFIG_ROOT` to the Hub container.
-    *   **Headless Support:** Add `--detached` flag to `gemini-toolbox`. When set, the script starts the container but **skips** the final `docker attach` / `tmux attach` step, exiting immediately after launch.
+    *   **Headless Support:** Add `--detached` flag. Starts the container but skips the final attach.
+    *   **Connect Command:** Add `connect <session_id>` command to easily attach to a running background session from the desktop terminal.
+2.  **Hub API (`app.py`):**
+    *   Implement `/api/files` endpoint to browse directories starting from `HOST_WORKSPACE_ROOT`.
+    *   Implement security guards to prevent traversal outside the root.
 
 ## Phase 3: Backend Logic (Script Reuse)
 *Goal: Use the existing `gemini-toolbox` script to launch sessions.*
@@ -29,7 +33,6 @@ This plan details the steps to transform the Gemini Hub from a read-only dashboa
     *   `/api/roots`: Returns the list of `HUB_ROOTS`.
     *   `/api/configs`: Lists subdirectories in `HOST_CONFIG_ROOT`.
     *   `/api/browse?path=...`: Returns subdirectories of the given path (filtered to directories only).
-        *   *Security:* Validate path starts with a known root.
 2.  **Launch Execution:**
     *   `/api/launch` (POST): Accepts `project_path` and `config_profile`.
     *   Executes:
@@ -58,4 +61,4 @@ This plan details the steps to transform the Gemini Hub from a read-only dashboa
 ## Phase 5: Verification
 1.  **Volume Check:** Ensure the launched session has the correct host files mounted.
 2.  **Connectivity Check:** Verify the launched session joins the Tailscale mesh.
-3.  **Attach Check:** Verify that a user can manually `docker exec ... tmux attach` from the host later.
+3.  **Attach Check:** Verify that `gemini-toolbox connect <ID>` works from the host.
