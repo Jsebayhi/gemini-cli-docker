@@ -394,6 +394,65 @@ def browse():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/launch', methods=['POST'])
+def launch():
+    """Launches a new Gemini session using the toolbox script."""
+    data = request.json or {}
+    project_path = data.get('project_path')
+    config_profile = data.get('config_profile')
+    
+    if not project_path:
+        return jsonify({"error": "Project path required"}), 400
+        
+    # Security: Ensure path is within allowed roots
+    project_path = os.path.abspath(project_path)
+    allowed = any(project_path.startswith(os.path.abspath(root)) for root in HUB_ROOTS)
+    
+    if not allowed:
+        return jsonify({"error": "Access denied"}), 403
+        
+    if not os.path.isdir(project_path):
+        return jsonify({"error": "Project directory not found"}), 404
+
+    # Resolve config path
+    config_args = []
+    if config_profile:
+        profile_path = os.path.join(HOST_CONFIG_ROOT, config_profile)
+        if os.path.isdir(profile_path):
+            config_args = ["--config", profile_path]
+
+    try:
+        # Prepare Environment
+        # We MUST set HOME to HOST_HOME so the script resolves host paths correctly
+        env = os.environ.copy()
+        if HOST_HOME:
+            env["HOME"] = HOST_HOME
+            
+        # Execute Launcher
+        # We use --detached to ensure the script returns immediately
+        # AUTH_KEY is already in os.environ from entrypoint
+        cmd = ["gemini-toolbox", "--remote", env.get("TAILSCALE_AUTH_KEY", ""), "--detached"] + config_args
+        
+        print(f">> Executing: {' '.join(cmd)} in {project_path}")
+        
+        # We run it in the background from Python's perspective too, 
+        # though --detached makes the bash script return fast.
+        result = subprocess.run(cmd, cwd=project_path, env=env, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            return jsonify({
+                "status": "success",
+                "output": result.stdout
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "error": result.stderr or result.stdout
+            }), 500
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     # Start the monitor thread
     t = threading.Thread(target=auto_shutdown_monitor, daemon=True)
