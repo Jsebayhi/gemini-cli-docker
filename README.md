@@ -86,7 +86,7 @@ The agent is running *inside* a container, but it sends commands to the *host*.
 *   **Absolute Paths Fail:** `docker run -v /home/gemini/cache:/cache ...` will fail because `/home/gemini` likely doesn't exist on your host.
 *   **Tip:** Always use relative paths (`./`) in your `docker-compose.yml` files.
 
-### 📱 Remote Access (Experimental)
+### 📱 Remote Access
 Access your Gemini CLI session from your phone or tablet using integrated **Tailscale VPN** support. This works with zero host configuration, even if you are behind a corporate VPN.
 
 #### 1. Start a Session
@@ -103,19 +103,21 @@ gemini-toolbox --remote
 This command will:
 1.  Start your Gemini CLI session (isolated on the VPN).
     *   **Hostname:** `gem-{PROJECT}-{TYPE}-{ID}` (e.g., `gem-myapp-geminicli-a1b2`).
-2.  **Auto-Start the Gemini Hub** if it's not already running.
+2.  **Auto-Start the Gemini Hub** (see below).
 
-#### 2. Connect via Gemini Hub
-The **Gemini Hub** is a mobile-optimized dashboard running on your machine.
-*   **On Mobile:** Open the URL shown in the terminal (e.g., `http://gemini-hub:8888`).
-*   **Features:**
-    *   **Search & Filter:** Quickly find projects by name or type (CLI vs Bash).
-    *   **One-Tap Connect:** Tap any card to open the remote terminal.
-    *   **Auto-Shutdown:** The Hub automatically stops after **60 seconds** of inactivity (no active sessions).
+> [!WARNING]
+> **VS Code Integration is disabled** when using Remote Access. This mode isolates the container's network stack for secure VPN connectivity, preventing it from talking to the host's IDE.
+
+### 📱 Gemini Hub (Mobile Discovery)
+The **Gemini Hub** is a built-in dashboard that auto-starts with your remote session. It provides a "Zero Config" way to discover and connect to your containers from a phone.
+
+*   **URL:** `http://gemini-hub:8888` (via MagicDNS)
+*   **One-Tap Access:** No need to type IP addresses. Just tap your project card.
+*   **Smart Features:**
+    *   **Search & Filter:** Find projects by name or type (CLI vs Bash).
+    *   **Auto-Shutdown:** Automatically stops after **60 seconds** of inactivity to save resources.
 
 #### Manual Control
-You can also control the Hub directly:
-
 ```bash
 # Stop the Hub manually
 gemini-toolbox stop-hub
@@ -123,9 +125,6 @@ gemini-toolbox stop-hub
 # Start the Hub manually (requires key)
 bin/gemini-hub --key $GEMINI_REMOTE_KEY
 ```
-
-> [!WARNING]
-> **VS Code Integration is disabled** when using Remote Access. This mode isolates the container's network stack for secure VPN connectivity, preventing it from talking to the host's IDE.
 
 ### 🧰 Multiple Flavors
 We provide three variants of the tool:
