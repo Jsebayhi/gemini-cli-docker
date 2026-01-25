@@ -164,22 +164,120 @@ TEMPLATE = """
             font-size: 1rem;
             cursor: pointer;
         }
+        .action-btn {
+            background-color: var(--accent);
+            color: white;
+            margin-bottom: 10px;
+        }
+        .action-btn:active {
+            background-color: var(--accent-hover);
+        }
+
+        /* Wizard Overlay */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-color);
+            z-index: 1000;
+            padding: 20px;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .overlay.active {
+            display: flex;
+        }
+        .overlay-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .list-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .list-item {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .list-item:active {
+            background: #2c2c2c;
+        }
+        .breadcrumb {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+        
+        .wizard-step {
+            display: none;
+        }
+        .wizard-step.active {
+            display: block;
+        }
+        
+        .footer-actions {
+            margin-top: auto;
+            padding-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+        
+        /* Loading Spinner */
+        .loader {
+            border: 3px solid #333;
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <h1>Gemini Workspace Hub</h1>
     
     <div class="container">
+        <button class="refresh-btn action-btn" onclick="openWizard()">+ New Session</button>
+
         <!-- Filters -->
         <div class="filters">
-            <input type="text" id="projectFilter" class="filter-input" placeholder="Search projects..." onkeyup="filterList()">
+            <input type="text" id="projectFilter" class="filter-input" placeholder="Search sessions..." onkeyup="filterList()">
             <select id="typeFilter" class="filter-select" onchange="filterList()">
                 <option value="all">All Types</option>
                 <option value="geminicli">Gemini CLI</option>
                 <option value="bash">Bash</option>
             </select>
             <label class="filter-checkbox">
-                <input type="checkbox" id="offlineFilter" onchange="filterList()"> Show Offline
+                <input type="checkbox" id="offlineFilter" onchange="filterList()"> Offline
             </label>
         </div>
 
@@ -198,15 +296,57 @@ TEMPLATE = """
             {% endfor %}
         {% else %}
             <div class="empty-state">
-                <p>No active Gemini containers found.</p>
-                <small>Run 'gemini-toolbox --remote ...' to start one.</small>
+                <p>No active sessions found.</p>
+                <small>Launch one below or from your desktop.</small>
             </div>
         {% endif %}
         
         <button class="refresh-btn" onclick="window.location.reload();">Refresh List</button>
     </div>
 
+    <!-- Wizard Overlay -->
+    <div id="wizard" class="overlay">
+        <div class="overlay-header">
+            <h2>Launch Session</h2>
+            <button class="close-btn" onclick="closeWizard()">×</button>
+        </div>
+
+        <!-- Step 1: Select Root -->
+        <div id="step-roots" class="wizard-step active">
+            <p>Select a workspace root:</p>
+            <div id="roots-list" class="list-group"></div>
+        </div>
+
+        <!-- Step 2: Browse -->
+        <div id="step-browse" class="wizard-step">
+            <div class="breadcrumb" id="current-path"></div>
+            <div id="folder-list" class="list-group"></div>
+            <div class="footer-actions">
+                <button class="refresh-btn btn-small" onclick="goBackToRoots()">Change Root</button>
+                <button class="refresh-btn action-btn btn-small" style="margin:0" onclick="goToConfig()">Use This Folder</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Config -->
+        <div id="step-config" class="wizard-step">
+            <p>Select Configuration:</p>
+            <select id="config-select" class="filter-select" style="width:100%; margin-bottom:20px">
+                <option value="">Default (Global)</option>
+            </select>
+            <div class="footer-actions">
+                <button class="refresh-btn btn-small" onclick="goToBrowse()">Back</button>
+                <button id="launch-btn" class="refresh-btn action-btn btn-small" style="margin:0" onclick="doLaunch()">
+                    Launch Now
+                </button>
+                <div id="launch-loader" class="loader"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let currentPath = "";
+        let selectedConfig = "";
+
         function filterList() {
             const search = document.getElementById('projectFilter').value.toLowerCase();
             const type = document.getElementById('typeFilter').value;
@@ -228,6 +368,129 @@ TEMPLATE = """
                     card.classList.add('hidden');
                 }
             });
+        }
+
+        // --- Wizard Logic ---
+
+        function openWizard() {
+            document.getElementById('wizard').classList.add('active');
+            fetchRoots();
+        }
+
+        function closeWizard() {
+            document.getElementById('wizard').classList.remove('active');
+        }
+
+        async function fetchRoots() {
+            const res = await fetch('/api/roots');
+            const data = await res.json();
+            const list = document.getElementById('roots-list');
+            list.innerHTML = "";
+            data.roots.forEach(root => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `<span>${root}</span> <span>›</span>`;
+                div.onclick = () => startBrowsing(root);
+                list.appendChild(div);
+            });
+            showStep('step-roots');
+        }
+
+        function showStep(id) {
+            document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function startBrowsing(path) {
+            currentPath = path;
+            loadPath(path);
+            showStep('step-browse');
+        }
+
+        async function loadPath(path) {
+            currentPath = path;
+            document.getElementById('current-path').innerText = path;
+            const res = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
+            const data = await res.json();
+            
+            const list = document.getElementById('folder-list');
+            list.innerHTML = "";
+
+            // Add Parent folder
+            if (path.includes('/') && path.length > 1) {
+                const up = document.createElement('div');
+                up.className = 'list-item';
+                up.style.opacity = "0.6";
+                up.innerHTML = `<span>.. (Up)</span>`;
+                up.onclick = () => {
+                    const parts = path.split('/');
+                    parts.pop();
+                    loadPath(parts.join('/') || '/');
+                };
+                list.appendChild(up);
+            }
+
+            data.directories.forEach(dir => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `<span>📁 ${dir}</span> <span>›</span>`;
+                div.onclick = () => loadPath(path + (path.endsWith('/') ? '' : '/') + dir);
+                list.appendChild(div);
+            });
+        }
+
+        function goBackToRoots() { fetchRoots(); }
+        function goToBrowse() { showStep('step-browse'); }
+
+        async function goToConfig() {
+            const res = await fetch('/api/configs');
+            const data = await res.json();
+            const select = document.getElementById('config-select');
+            
+            // Keep first option
+            select.innerHTML = '<option value="">Default (Global)</option>';
+            data.configs.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.innerText = c;
+                select.appendChild(opt);
+            });
+            showStep('step-config');
+        }
+
+        async function doLaunch() {
+            const btn = document.getElementById('launch-btn');
+            const loader = document.getElementById('launch-loader');
+            const config = document.getElementById('config-select').value;
+
+            btn.style.display = "none";
+            loader.style.display = "block";
+
+            try {
+                const res = await fetch('/api/launch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        project_path: currentPath,
+                        config_profile: config
+                    })
+                });
+                const result = await res.json();
+                
+                if (result.status === 'success') {
+                    alert("Session launched! Refreshing list...");
+                    closeWizard();
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    alert("Error: " + result.error);
+                    btn.style.display = "block";
+                    loader.style.display = "none";
+                }
+            } catch (e) {
+                alert("Launch failed: " + e);
+                btn.style.display = "block";
+                loader.style.display = "none";
+            }
         }
     </script>
 </body>
