@@ -2,61 +2,60 @@
 
 This plan details the steps to transform the Gemini Hub from a read-only dashboard into an active session launcher.
 
-## Phase 1: Docker Socket Integration (Infrastructure)
-*Goal: Enable the Hub container to control the host's Docker daemon.*
+## Phase 1: Infrastructure & Dependencies
+*Goal: Enable the Hub container to control the host's Docker daemon and run the toolbox script.*
 
-1.  **Host Script (`bin/gemini-toolbox`):**
-    *   Update the Hub launch logic to include `-v /var/run/docker.sock:/var/run/docker.sock`.
-    *   Detect and pass the host's Docker GID if necessary.
-2.  **Hub Environment (`images/gemini-hub/Dockerfile`):**
-    *   Install the `docker-ce-cli` (Docker binary) to allow executing `docker` commands.
-3.  **Hub Runtime:**
-    *   Verify the Hub can successfully execute `docker ps` from within the container.
+1.  **Hub Environment (`images/gemini-hub`):**
+    *   **Dockerfile:** Install `docker-ce-cli`, `git`, `bash`.
+    *   **Dockerfile:** Copy `bin/gemini-toolbox` into the image at `/usr/local/bin/` (Build-time copy via Makefile).
+2.  **Host Script (`bin/gemini-toolbox`):**
+    *   Update Hub launch command to mount `/var/run/docker.sock`.
 
-## Phase 2: Workspace Mirroring (Path Logic)
-*Goal: Align the Hub's filesystem with the Host's project directories.*
+## Phase 2: Configuration & Path Logic (Multi-Root)
+*Goal: Allow the Hub to see and browse multiple host directories and config profiles.*
 
-1.  **Toolbox Configuration:**
-    *   Add a `--workspace <path>` flag to the toolbox script.
-    *   Mirror-mount the workspace: `-v <HOST_PATH>:<HOST_PATH>`.
-    *   Pass the path via `HOST_WORKSPACE_ROOT` environment variable.
-2.  **Hub API (`app.py`):**
-    *   Implement `/api/files` endpoint to browse directories starting from `HOST_WORKSPACE_ROOT`.
-    *   Implement security guards to prevent traversal outside the root.
+1.  **Toolbox Script Update:**
+    *   **Args:** Accept multiple `--workspace <path>` arguments.
+    *   **Args:** Accept `--config-root <path>` (Default: `~/.gemini/configs`).
+    *   **Mounts:** Mirror-mount ALL workspace roots individually.
+    *   **Mounts:** Mirror-mount the Config Root.
+    *   **Env:** Pass `HUB_ROOTS` (list) and `HOST_CONFIG_ROOT` to the Hub container.
+    *   **Headless Support:** Add `--detached` flag to `gemini-toolbox`. When set, the script starts the container but **skips** the final `docker attach` / `tmux attach` step, exiting immediately after launch.
 
-## Phase 3: Backend Launcher Logic (Script Reuse)
-*Goal: Use the existing `gemini-toolbox` script to launch sessions, ensuring 100% consistency.*
+## Phase 3: Backend Logic (Script Reuse)
+*Goal: Use the existing `gemini-toolbox` script to launch sessions.*
 
-1.  **Environment Prep:**
-    *   Mount the `bin/gemini-toolbox` script into the Hub container (e.g., at `/usr/local/bin/gemini-toolbox`).
-    *   Set `HOME` environment variable in the Hub to match the Host's `HOME` (passed via start args).
-    *   Ensure `git` and `bash` are available in the Hub image.
+1.  **File Browser API:**
+    *   `/api/roots`: Returns the list of `HUB_ROOTS`.
+    *   `/api/configs`: Lists subdirectories in `HOST_CONFIG_ROOT`.
+    *   `/api/browse?path=...`: Returns subdirectories of the given path (filtered to directories only).
+        *   *Security:* Validate path starts with a known root.
 2.  **Launch Execution:**
-    *   Instead of constructing `docker run` manually, the Python app calls:
+    *   `/api/launch` (POST): Accepts `project_path` and `config_profile`.
+    *   Executes:
         ```python
         subprocess.run(
-            ["gemini-toolbox", "--remote", AUTH_KEY], 
+            ["gemini-toolbox", "--remote", AUTH_KEY, "--detached", "--config", profile_path],
             cwd=target_project_path,
             env={...os.environ, "HOME": host_home_path}
         )
         ```
-    *   This relies on DooD and Path Mirroring to work seamlessly.
-3.  **API Endpoint:**
-    *   Create `/api/launch` (POST) to trigger the script wrapper.
 
-## Phase 4: Frontend UI (The Browser)
-*Goal: Create a touch-friendly mobile file browser.*
+## Phase 4: Frontend UI (New Session Wizard)
+*Goal: A touch-friendly mobile file browser.*
 
-1.  **Dashboard Update:**
-    *   Add a "Start New Session" button.
-2.  **Selection Flow:**
-    *   Create a drill-down directory browser.
-    *   "Launch Session" button for each directory.
-3.  **Interaction:**
-    *   Show loading state during container spawn.
-    *   Redirect or refresh on success.
+1.  **Dashboard Update:** "Start New Session" button.
+2.  **Wizard Step 1: Browse:**
+    *   List Workspace Roots.
+    *   Drill down into folders (Folder icons only).
+    *   "Select This Folder" button.
+3.  **Wizard Step 2: Configure:**
+    *   Dropdown: "Select Config Profile" (scanned from Config Root).
+4.  **Launch:**
+    *   Show loading state.
+    *   Auto-refresh main list on success.
 
 ## Phase 5: Verification
 1.  **Volume Check:** Ensure the launched session has the correct host files mounted.
 2.  **Connectivity Check:** Verify the launched session joins the Tailscale mesh.
-3.  **Cleanup:** Ensure `docker run --rm` is used so sessions clean up on exit.
+3.  **Attach Check:** Verify that a user can manually `docker exec ... tmux attach` from the host later.
