@@ -18,12 +18,13 @@ The auto-shutdown mechanism is now **disabled by default**.
 *   **CLI Support:** The `gemini-hub` script exposes an `--auto-shutdown` flag to enable this for specific use cases (e.g., temporary CI/CD environments).
 
 ### 2. Contextual Config Root
-We leverage the user's intent when launching `gemini-toolbox` to configure the Hub's discovery scope.
+We leverage the user's intent when launching `gemini-toolbox` to configure the Hub's discovery scope, **but only with explicit permission**.
 
 *   **Scenario:** User runs `gemini-toolbox --profile ~/.gemini-profiles/work`.
-*   **Inference:** The user is likely organizing profiles in `~/.gemini-profiles/`.
-*   **Action:** The toolbox calculates the parent directory (`~/.gemini-profiles/`) and passes it to the Hub as the `--config-root`.
-*   **Result:** The Hub UI automatically lists "work" alongside any sibling profiles (e.g., "personal", "client-a"), enabling seamless switching.
+*   **Action:** The toolbox calculates the parent directory (`~/.gemini-profiles/`) and **prompts the user**: "Allow Hub to scan parent directory?".
+*   **Result:**
+    *   **If Yes:** The Hub is started with `--config-root ~/.gemini-profiles`, allowing discovery of sibling profiles.
+    *   **If No (or Non-Interactive):** The Hub uses its default configuration scope, ensuring no accidental exposure of the file system.
 
 ### 3. Workspace Mirroring
 The toolbox continues to pass the current project directory as a `--workspace` to the Hub. This ensures that the specific project the user is working on is immediately available for browsing in the Hub wizard.

@@ -323,10 +323,21 @@ if [ "$REMOTE_MODE" = true ]; then
              
              HUB_ARGS=("-d" "--key" "$TAILSCALE_KEY" "--workspace" "$PROJECT_DIR")
              
-             # If running in Profile Mode, tell the Hub to look for other profiles in the parent directory
+             # If running in Profile Mode, ask user if they want to expose the parent directory to the Hub
              if [ "$ENABLE_PROFILE_MODE" = true ] && [ -n "$PROFILE_ROOT" ]; then
                  HUB_CONFIG_ROOT=$(dirname "$PROFILE_ROOT")
-                 HUB_ARGS+=("--config-root" "$HUB_CONFIG_ROOT")
+                 
+                 # Only ask if interactive. If NOT interactive, we don't share the parent.
+                 if [ -t 0 ]; then
+                     echo ""
+                     echo ">> Profile Mode detected: ${PROFILE_ROOT}"
+                     echo ">> The Hub can scan the parent directory (${HUB_CONFIG_ROOT}) to let you switch profiles easily."
+                     read -p ">> Allow Hub to scan parent directory? [y/N] " -n 1 -r
+                     echo ""
+                     if [[ $REPLY =~ ^[Yy]$ ]]; then
+                         HUB_ARGS+=("--config-root" "$HUB_CONFIG_ROOT")
+                     fi
+                 fi
              fi
              
              if "$HUB_SCRIPT" "${HUB_ARGS[@]}" > /tmp/gemini-hub.log 2>&1; then
