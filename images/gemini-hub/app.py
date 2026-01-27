@@ -336,8 +336,15 @@ TEMPLATE = """
             <div id="config-details" style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 20px; min-height: 1.2em;">
                 <!-- Extra args info here -->
             </div>
+            <div id="launch-results" style="display:none; margin-top: 20px;">
+                <p id="launch-status" style="font-weight:bold; margin-bottom:5px;"></p>
+                <div style="background:#000; padding:10px; border-radius:8px; font-family:monospace; font-size:0.75rem; color:#0f0; overflow-x:auto;">
+                    <div style="color:#aaa; border-bottom:1px solid #333; margin-bottom:5px; padding-bottom:5px;">$ <span id="launch-cmd"></span></div>
+                    <pre id="launch-log" style="margin:0; white-space:pre-wrap;"></pre>
+                </div>
+            </div>
             <div class="footer-actions">
-                <button class="refresh-btn btn-small" onclick="goToBrowse()">Back</button>
+                <button class="refresh-btn btn-small" id="launch-back-btn" onclick="goToBrowse()">Back</button>
                 <button id="launch-btn" class="refresh-btn action-btn btn-small" style="margin:0" onclick="doLaunch()">
                     Launch Now
                 </button>
@@ -485,11 +492,18 @@ TEMPLATE = """
 
         async function doLaunch() {
             const btn = document.getElementById('launch-btn');
+            const backBtn = document.getElementById('launch-back-btn');
             const loader = document.getElementById('launch-loader');
             const config = document.getElementById('config-select').value;
+            const results = document.getElementById('launch-results');
+            const status = document.getElementById('launch-status');
+            const cmdSpan = document.getElementById('launch-cmd');
+            const logPre = document.getElementById('launch-log');
 
             btn.style.display = "none";
+            backBtn.style.display = "none";
             loader.style.display = "block";
+            results.style.display = "none";
 
             try {
                 const res = await fetch('/api/launch', {
@@ -502,18 +516,30 @@ TEMPLATE = """
                 });
                 const result = await res.json();
                 
+                results.style.display = "block";
+                cmdSpan.innerText = result.command || "???";
+                logPre.innerText = (result.stdout || "") + "\\n" + (result.stderr || "");
+                
                 if (result.status === 'success') {
-                    alert("Session launched! Refreshing list...");
-                    closeWizard();
-                    setTimeout(() => window.location.reload(), 2000);
+                    status.innerText = "✅ Session launched!";
+                    status.style.color = "var(--accent)";
+                    backBtn.innerText = "Done (Refresh)";
+                    backBtn.onclick = () => window.location.reload();
+                    backBtn.style.display = "block";
                 } else {
-                    alert("Error: " + result.error);
+                    status.innerText = "❌ Launch failed";
+                    status.style.color = "var(--offline)";
                     btn.style.display = "block";
-                    loader.style.display = "none";
+                    backBtn.style.display = "block";
                 }
             } catch (e) {
-                alert("Launch failed: " + e);
+                status.innerText = "❌ Network Error";
+                status.style.color = "var(--offline)";
+                logPre.innerText = e.toString();
+                results.style.display = "block";
                 btn.style.display = "block";
+                backBtn.style.display = "block";
+            } finally {
                 loader.style.display = "none";
             }
         }
@@ -755,23 +781,26 @@ def launch():
         # We use --detached to ensure the script returns immediately
         # AUTH_KEY is already in os.environ from entrypoint
         cmd = ["gemini-toolbox", "--remote", env.get("TAILSCALE_AUTH_KEY", ""), "--detached"] + config_args
+        cmd_str = ' '.join(cmd)
         
-        print(f">> Executing: {' '.join(cmd)} in {project_path}")
+        print(f">> Executing: {cmd_str} in {project_path}")
         
         # We run it in the background from Python's perspective too, 
         # though --detached makes the bash script return fast.
         result = subprocess.run(cmd, cwd=project_path, env=env, capture_output=True, text=True)
         
+        response = {
+            "command": cmd_str,
+            "stdout": result.stdout,
+            "stderr": result.stderr
+        }
+
         if result.returncode == 0:
-            return jsonify({
-                "status": "success",
-                "output": result.stdout
-            })
+            response["status"] = "success"
+            return jsonify(response)
         else:
-            return jsonify({
-                "status": "error",
-                "error": result.stderr or result.stdout
-            }), 500
+            response["status"] = "error"
+            return jsonify(response), 500
             
     except Exception as e:
         return jsonify({"error": str(e)}), 500
