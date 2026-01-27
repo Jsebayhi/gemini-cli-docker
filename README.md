@@ -114,8 +114,10 @@ The **Gemini Hub** is a built-in dashboard that auto-starts with your remote ses
 *   **URL:** `http://gemini-hub:8888` (via MagicDNS)
 *   **One-Tap Access:** No need to type IP addresses. Just tap your project card.
 *   **Smart Features:**
-    *   **Search & Filter:** Find projects by name or type (CLI vs Bash).
-    *   **Auto-Shutdown:** Automatically stops after **60 seconds** of inactivity to save resources.
+    *   **New Session Wizard:** Launch new CLI or Bash sessions directly from the web UI.
+    *   **Interface Selection:** Choose between the standard AI chat (CLI) or a raw shell (Bash) for remote tasks like editing files with `vim`.
+    *   **Search & Filter:** Find projects by name or type.
+    *   **Persistent by Default:** The Hub stays running to facilitate switching sessions. Auto-shutdown is optional.
 
 #### Manual Control
 ```bash

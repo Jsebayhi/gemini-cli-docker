@@ -329,31 +329,40 @@ TEMPLATE = """
 
         <!-- Step 3: Config -->
         <div id="step-config" class="wizard-step">
-            <p>Select Configuration:</p>
-            <select id="config-select" class="filter-select" style="width:100%; margin-bottom:10px" onchange="loadConfigDetails()">
-                <option value="">Default (Global)</option>
-            </select>
-            
-            <p>Session Type:</p>
-            <select id="session-type-select" class="filter-select" style="width:100%; margin-bottom:10px">
-                <option value="cli">Gemini CLI (Chat)</option>
-                <option value="bash">Bash Shell (Debug)</option>
-            </select>
-
-            <div id="config-details" style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 20px; min-height: 1.2em;">
-                <!-- Extra args info here -->
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <label style="display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px;">Profile Configuration</label>
+                    <select id="config-select" class="filter-select" style="width:100%;" onchange="loadConfigDetails()">
+                        <option value="">Default (Global)</option>
+                    </select>
+                    <div id="config-details" style="font-size: 0.75rem; color: var(--accent); margin-top: 5px; min-height: 1.2em;">
+                        <!-- Extra args info here -->
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px;">Session Interface</label>
+                    <select id="session-type-select" class="filter-select" style="width:100%;">
+                        <option value="cli">Gemini CLI</option>
+                        <option value="bash">Bash Shell</option>
+                    </select>
+                </div>
             </div>
+
             <div id="launch-results" style="display:none; margin-top: 20px;">
                 <p id="launch-status" style="font-weight:bold; margin-bottom:5px;"></p>
-                <div style="background:#000; padding:10px; border-radius:8px; font-family:monospace; font-size:0.75rem; color:#0f0; overflow-x:auto;">
-                    <div style="color:#aaa; border-bottom:1px solid #333; margin-bottom:5px; padding-bottom:5px;">$ <span id="launch-cmd"></span></div>
+                <div style="background:#000; padding:10px; border-radius:8px; font-family:monospace; font-size:0.75rem; color:#0f0; border: 1px solid #333; overflow-x:auto;">
+                    <div style="color:#666; border-bottom:1px solid #222; margin-bottom:5px; padding-bottom:5px; display:flex; justify-content:space-between;">
+                        <span>Launch Log</span>
+                        <span id="launch-cmd" style="font-size:0.6rem; color:#444;"></span>
+                    </div>
                     <pre id="launch-log" style="margin:0; white-space:pre-wrap;"></pre>
                 </div>
             </div>
             <div class="footer-actions">
                 <button class="refresh-btn btn-small" id="launch-back-btn" onclick="goToBrowse()">Back</button>
                 <button id="launch-btn" class="refresh-btn action-btn btn-small" style="margin:0" onclick="doLaunch()">
-                    Launch Now
+                    Launch Session
                 </button>
                 <div id="launch-loader" class="loader"></div>
             </div>
@@ -488,9 +497,13 @@ TEMPLATE = """
                 const res = await fetch(`/api/config-details?name=${encodeURIComponent(config)}`);
                 const data = await res.json();
                 if (data.extra_args && data.extra_args.length > 0) {
-                    detailsDiv.innerText = "⚡ Custom arguments: " + data.extra_args.join(" ");
+                    let html = "<div style='margin-bottom:5px'>◈ Active profile with custom arguments:</div>";
+                    html += "<div style='color:var(--text-dim); padding-left:10px; font-family:monospace; font-size:0.7rem;'>";
+                    html += data.extra_args.map(a => `<div>↳ ${a}</div>`).join('');
+                    html += "</div>";
+                    detailsDiv.innerHTML = html;
                 } else {
-                    detailsDiv.innerText = "Using default settings.";
+                    detailsDiv.innerText = "◈ Active profile using defaults";
                 }
             } catch (e) {
                 detailsDiv.innerText = "";
@@ -532,7 +545,17 @@ TEMPLATE = """
                 if (result.status === 'success') {
                     status.innerText = "✅ Session launched!";
                     status.style.color = "var(--accent)";
-                    backBtn.innerText = "Done (Refresh)";
+                    
+                    // Try to extract hostname to offer direct connect
+                    const match = (result.stdout || "").match(/Container started: (gem-[a-zA-Z0-9-]+)/);
+                    if (match && match[1]) {
+                        const hostname = match[1];
+                        btn.innerText = "Connect Now 🚀";
+                        btn.onclick = () => window.open(`http://${hostname}:3000`, '_blank');
+                        btn.style.display = "block";
+                    }
+
+                    backBtn.innerText = "Done";
                     backBtn.onclick = () => window.location.reload();
                     backBtn.style.display = "block";
                 } else {
