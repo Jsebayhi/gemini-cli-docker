@@ -333,6 +333,13 @@ TEMPLATE = """
             <select id="config-select" class="filter-select" style="width:100%; margin-bottom:10px" onchange="loadConfigDetails()">
                 <option value="">Default (Global)</option>
             </select>
+            
+            <p>Session Type:</p>
+            <select id="session-type-select" class="filter-select" style="width:100%; margin-bottom:10px">
+                <option value="cli">Gemini CLI (Chat)</option>
+                <option value="bash">Bash Shell (Debug)</option>
+            </select>
+
             <div id="config-details" style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 20px; min-height: 1.2em;">
                 <!-- Extra args info here -->
             </div>
@@ -495,6 +502,7 @@ TEMPLATE = """
             const backBtn = document.getElementById('launch-back-btn');
             const loader = document.getElementById('launch-loader');
             const config = document.getElementById('config-select').value;
+            const sessionType = document.getElementById('session-type-select').value;
             const results = document.getElementById('launch-results');
             const status = document.getElementById('launch-status');
             const cmdSpan = document.getElementById('launch-cmd');
@@ -511,7 +519,8 @@ TEMPLATE = """
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         project_path: currentPath,
-                        config_profile: config
+                        config_profile: config,
+                        session_type: sessionType
                     })
                 });
                 const result = await res.json();
@@ -749,6 +758,7 @@ def launch():
     data = request.json or {}
     project_path = data.get('project_path')
     config_profile = data.get('config_profile')
+    session_type = data.get('session_type', 'cli')
     
     if not project_path:
         return jsonify({"error": "Project path required"}), 400
@@ -770,17 +780,25 @@ def launch():
         # The Hub always uses Profile Mode (nested .gemini) for its managed profiles
         config_args = ["--profile", profile_path]
 
+    # Handle Session Type
+    if session_type == 'bash':
+        config_args.append("--bash")
+
     try:
         # Prepare Environment
         # We MUST set HOME to HOST_HOME so the script resolves host paths correctly
         env = os.environ.copy()
         if HOST_HOME:
             env["HOME"] = HOST_HOME
+        
+        # Pass Key via Env to avoid leakage
+        auth_key = env.get("TAILSCALE_AUTH_KEY", "")
+        env["GEMINI_REMOTE_KEY"] = auth_key
             
         # Execute Launcher
         # We use --detached to ensure the script returns immediately
-        # AUTH_KEY is already in os.environ from entrypoint
-        cmd = ["gemini-toolbox", "--remote", env.get("TAILSCALE_AUTH_KEY", ""), "--detached"] + config_args
+        # We pass --remote without the key (toolbox will pick up GEMINI_REMOTE_KEY)
+        cmd = ["gemini-toolbox", "--remote", "--detached"] + config_args
         cmd_str = ' '.join(cmd)
         
         print(f">> Executing: {cmd_str} in {project_path}")

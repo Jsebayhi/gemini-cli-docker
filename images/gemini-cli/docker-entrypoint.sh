@@ -99,6 +99,7 @@ if [ -n "${TAILSCALE_AUTH_KEY:-}" ]; then
 
     # --- Session Mirroring (Tmux) ---
     echo ">> Starting Shared Session (Tmux)..."
+    echo "DEBUG: Entrypoint args: $@"
     
     # 1. Create a DETACHED tmux session named 'gemini' running the user's command
     # We must run this as the user so they own the session socket
@@ -108,14 +109,23 @@ if [ -n "${TAILSCALE_AUTH_KEY:-}" ]; then
     # It attaches to the 'gemini' session
     # -p 3000: Port
     # -W: Writable
-    ttyd -p 3000 -W gosu "$TARGET_USER" tmux attach -t gemini > /tmp/ttyd.log 2>&1 &
+    echo ">> Starting ttyd on port 3000..."
+    ttyd -p 3000 -W gosu "$TARGET_USER" tmux attach -t gemini &
     
     echo ">> Web Terminal active at http://<IP>:3000"
     echo ">> Attaching local session..."
     
     # 3. Attach the Foreground (Desktop) to the same session
     # We DO NOT use 'exec' here so we can catch the exit and clean up
-    gosu "$TARGET_USER" tmux attach -t gemini
+    if [ -t 0 ]; then
+        gosu "$TARGET_USER" tmux attach -t gemini
+    else
+        echo ">> Detached mode detected. keeping container alive..."
+        # Wait for the tmux session to end
+        while gosu "$TARGET_USER" tmux has-session -t gemini 2>/dev/null; do
+            sleep 1
+        done
+    fi
     
     # Cleanup on exit
     echo ">> Session ended. Stopping remote services..."
