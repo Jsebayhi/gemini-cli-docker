@@ -267,7 +267,15 @@ fi
 # 2.5 Handle Connect
 if [ -n "$CONNECT_ID" ]; then
     echo ">> Connecting to session '$CONNECT_ID'..."
-    exec docker exec -it "$CONNECT_ID" gosu gemini tmux attach -t gemini
+    # Use current user's UID
+    CURRENT_UID=$(id -u)
+    
+    if [[ "$CONNECT_ID" == *"-bash-"* ]]; then
+         echo ">> Opening Bash shell..."
+         exec docker exec -it "$CONNECT_ID" gosu "$CURRENT_UID" bash
+    else
+         exec docker exec -it "$CONNECT_ID" gosu "$CURRENT_UID" tmux attach -t gemini
+    fi
 fi
 
 # 2.6 Stale Image Warning
@@ -361,8 +369,8 @@ if [ "$REMOTE_MODE" = true ]; then
     )
 fi
 
-DOCKER_CMD=(
-  docker run --rm -it "${CONTAINER_NAME_ARG[@]}"
+DOCKER_ARGS=(
+  "${CONTAINER_NAME_ARG[@]}"
   $NETWORK_MODE
   # Path Mirroring for IDE Security Check:
   # We mount the project at the EXACT SAME path as the host (not /home/gemini/workspace).
@@ -382,7 +390,7 @@ DOCKER_CMD=(
   --env GEMINI_SESSION_ID="${GEMINI_SESSION_ID}"
   --env GEMINI_PROJECT_NAME="${PROJECT_NAME}"
   --env GEMINI_SESSION_TYPE="${SESSION_TYPE}"
-  --env TERM
+  --env TERM="${TERM:-xterm-256color}"
   --env LANG
   --env LC_ALL
   --env HTTP_PROXY --env HTTPS_PROXY --env NO_PROXY
@@ -393,7 +401,7 @@ DOCKER_CMD=(
 
 # Conditionally Add Docker Support
 if [ "$ENABLE_DOCKER" = true ]; then
-    DOCKER_CMD+=(
+    DOCKER_ARGS+=(
       # Docker-out-of-Docker Support
       --volume "/var/run/docker.sock:/var/run/docker.sock"
       --env HOST_DOCKER_GID="${HOST_DOCKER_GID}"
@@ -404,7 +412,7 @@ fi
 
 # Conditionally Add IDE Integration
 if [ "$ENABLE_VSCODE_INTEGRATION" = true ]; then
-    DOCKER_CMD+=(
+    DOCKER_ARGS+=(
       # VS Code Integration:
       # 1. TERM_PROGRAM*: Tells Gemini CLI we are inside VS Code (enables the feature).
       # 2. GEMINI_CLI_IDE_*: Connection details passed from the Host Terminal.
@@ -418,20 +426,25 @@ if [ "$ENABLE_VSCODE_INTEGRATION" = true ]; then
     )
 fi
 
-# 4. Execute
-if [ "$DETACHED_MODE" = true ]; then
-    echo ">> Starting container in background..."
-    "${DOCKER_CMD[@]}" -d "$IMAGE_NAME" "${ARGS[@]}"
-    echo ">> Container started: ${GEMINI_SESSION_ID}"
-    exit 0
+# 4. Assemble Execution Arguments
+EXEC_ARGS=()
+if [ "$USE_BASH" = true ]; then
+    echo ">> Mode: BASH"
+    EXEC_ARGS=("--entrypoint" "/usr/local/bin/docker-entrypoint.sh" "$IMAGE_NAME" "bash" "${ARGS[@]}")
+else
+    EXEC_ARGS=("$IMAGE_NAME" "${ARGS[@]}")
 fi
 
-if [ "$USE_BASH" = true ]; then
-    echo "Starting in BASH mode..."
-    "${DOCKER_CMD[@]}" \
-      --entrypoint /usr/local/bin/docker-entrypoint.sh \
-      "$IMAGE_NAME" bash "${ARGS[@]}"
+# 5. Execute
+if [ "$DETACHED_MODE" = true ]; then
+    echo ">> Starting container in background..."
+    echo "DEBUG: DETACHED_MODE=$DETACHED_MODE"
+    echo "DEBUG: EXEC_ARGS=${EXEC_ARGS[*]}"
+    docker run --rm -d "${DOCKER_ARGS[@]}" "${EXEC_ARGS[@]}"
+    echo ">> Container started: ${GEMINI_SESSION_ID}"
 else
-    "${DOCKER_CMD[@]}" \
-      "$IMAGE_NAME" "${ARGS[@]}"
+    if [ "$USE_BASH" = true ]; then
+        echo "Starting in BASH mode..."
+    fi
+    docker run --rm -it "${DOCKER_ARGS[@]}" "${EXEC_ARGS[@]}"
 fi

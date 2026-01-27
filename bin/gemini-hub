@@ -100,6 +100,23 @@ EXTRA_MOUNTS+=("-v" "${ABS_CONFIG_ROOT}:${ABS_CONFIG_ROOT}")
 # This keeps the host filesystem clean while preventing "New Device" naming collisions (gemini-hub-1).
 EXTRA_MOUNTS+=("-v" "gemini-hub-state:/var/lib/tailscale")
 
+# 4. Mount Toolbox Script (Ensure Hub uses latest version)
+# Resolve real path of this script to find sibling toolbox script
+REAL_SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$REAL_SOURCE" ]; do
+    DIR="$( cd -P "$( dirname "$REAL_SOURCE" )" >/dev/null 2>&1 && pwd )"
+    REAL_SOURCE="$(readlink "$REAL_SOURCE")"
+    [[ $REAL_SOURCE != /* ]] && REAL_SOURCE="$DIR/$REAL_SOURCE"
+done
+SCRIPT_DIR="$( cd -P "$( dirname "$REAL_SOURCE" )" >/dev/null 2>&1 && pwd )"
+TOOLBOX_SCRIPT="${SCRIPT_DIR}/gemini-toolbox"
+
+if [ -f "$TOOLBOX_SCRIPT" ]; then
+    EXTRA_MOUNTS+=("-v" "${TOOLBOX_SCRIPT}:/usr/local/bin/gemini-toolbox")
+else
+    echo "Warning: gemini-toolbox script not found at $TOOLBOX_SCRIPT. Hub will use embedded version."
+fi
+
 # Resolve Image (Local vs Remote)
 if docker image inspect "$LOCAL_TAG" >/dev/null 2>&1; then
     IMAGE_NAME="$LOCAL_TAG"
