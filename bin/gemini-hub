@@ -193,7 +193,7 @@ echo ">> Access at http://localhost:$PORT (Desktop)"
 echo ">> Access at http://gemini-hub:8888 (Mobile VPN)"
 
 # Run Container
-docker run --rm $MODE \
+docker run --rm "$MODE" \
     --name "$CONTAINER_NAME" \
     --net=host \
     --cap-add=NET_ADMIN \
