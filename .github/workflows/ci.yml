@@ -53,6 +53,13 @@ jobs:
           # Check images/gemini-hub
           ruff check images/gemini-hub
 
+      - name: Run Tests (Gemini Hub)
+        run: |
+          cd images/gemini-hub
+          pip install -r requirements.txt
+          # Enforce 90% coverage on the 'app' package
+          python -m pytest --cov=app --cov-fail-under=90
+
   build:
     name: Build & Test
     needs: lint
