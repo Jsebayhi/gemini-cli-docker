@@ -1,6 +1,5 @@
-import pytest
 import subprocess
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app.services.tailscale import TailscaleService
 
 def test_get_status_success():

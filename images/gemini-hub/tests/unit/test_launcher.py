@@ -1,6 +1,5 @@
-import pytest
 import subprocess
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app.services.launcher import LauncherService
 
 def test_launch_timeout():

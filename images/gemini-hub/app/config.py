@@ -1,5 +1,4 @@
 import os
-import sys
 
 class Config:
     """Central configuration for Gemini Hub."""

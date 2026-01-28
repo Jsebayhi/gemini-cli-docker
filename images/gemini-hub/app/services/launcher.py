@@ -1,7 +1,7 @@
 import os
 import subprocess
 import logging
-from typing import Dict, Any
+from typing import Dict
 from app.config import Config
 
 logger = logging.getLogger(__name__)
