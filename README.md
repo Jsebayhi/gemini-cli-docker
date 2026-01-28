@@ -118,14 +118,16 @@ The **Gemini Hub** is a built-in dashboard that auto-starts with your remote ses
     *   **Interface Selection:** Choose between the standard AI chat (CLI) or a raw shell (Bash) for remote tasks like editing files with `vim`.
     *   **Search & Filter:** Find projects by name or type.
     *   **Persistent by Default:** The Hub stays running to facilitate switching sessions. Auto-shutdown is optional.
+    *   **Smart Workspace Management:** Need to access a new folder? Just run `gemini-toolbox` with the new path. The Hub will detect it and offer to **Merge and Restart** seamlessly.
 
 #### Manual Control
 ```bash
+# Add a new workspace to the running Hub (Hot Add)
+# Triggers a Smart Restart prompt
+gemini-hub --workspace /data/new-project
+
 # Stop the Hub manually
 gemini-toolbox stop-hub
-
-# Start the Hub manually (requires key)
-bin/gemini-hub --key $GEMINI_REMOTE_KEY
 ```
 
 ### 🧰 Multiple Flavors
