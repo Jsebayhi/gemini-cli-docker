@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app.services.monitor import MonitorService
 
 def test_monitor_shutdown_trigger():
