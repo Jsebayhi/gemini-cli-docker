@@ -77,12 +77,75 @@ if [ "$AUTO_SHUTDOWN" = true ]; then
     ENV_VARS+=("--env" "HUB_AUTO_SHUTDOWN=1")
 fi
 
+# --- SMART RESTART LOGIC ---
+# Check if Hub is already running
+if docker ps -q -f name="^/${CONTAINER_NAME}$" >/dev/null 2>&1; then
+    echo ">> Hub is already running."
+    
+    # 1. Introspect existing configuration
+    EXISTING_ROOTS_STR=$(docker inspect --format '{{range .Config.Env}}{{if match . "HUB_ROOTS=.*"}}{{slice . 10}}{{end}}{{end}}' "$CONTAINER_NAME")
+    IFS=':' read -ra EXISTING_ROOTS <<< "$EXISTING_ROOTS_STR"
+    
+    # 2. Check for missing roots
+    MISSING_ROOTS=()
+    for new_root in "${WORKSPACE_ROOTS[@]}"; do
+        ABS_NEW=$(realpath -m "$new_root")
+        FOUND=false
+        for old_root in "${EXISTING_ROOTS[@]}"; do
+            if [[ "$ABS_NEW" == "$old_root"* ]]; then
+                FOUND=true
+                break
+            fi
+        done
+        if [ "$FOUND" = false ]; then
+            MISSING_ROOTS+=("$ABS_NEW")
+        fi
+    done
+    
+    # 3. Decision
+    if [ ${#MISSING_ROOTS[@]} -eq 0 ]; then
+        echo ">> Active Hub already covers all requested workspaces."
+        echo ">> Hub URL: http://localhost:$PORT"
+        exit 0
+    else
+        echo ">> Requested workspaces are NOT covered by the active Hub:"
+        for r in "${MISSING_ROOTS[@]}"; do echo "   - $r"; done
+        
+        if [ -t 0 ]; then
+            echo ""
+            read -p ">> Restart Hub to include them? (Merge/Replace/Cancel) [M/r/c]: " -r RESPONSE
+            RESPONSE=${RESPONSE:-M}
+            if [[ "$RESPONSE" =~ ^[Mm]$ ]]; then
+                # MERGE: Add existing roots to the request list (deduplication happens in mount loop)
+                WORKSPACE_ROOTS+=("${EXISTING_ROOTS[@]}")
+                echo ">> Stopping old Hub..."
+                docker stop "$CONTAINER_NAME" >/dev/null
+            elif [[ "$RESPONSE" =~ ^[Rr]$ ]]; then
+                # REPLACE: Just stop, keeping only new WORKSPACE_ROOTS
+                echo ">> Stopping old Hub..."
+                docker stop "$CONTAINER_NAME" >/dev/null
+            else
+                echo ">> Action cancelled."
+                exit 0
+            fi
+        else
+            # Non-interactive: Default to Merge and Restart (Safe behavior for scripts)
+            echo ">> Non-interactive mode: Merging roots and restarting..."
+            WORKSPACE_ROOTS+=("${EXISTING_ROOTS[@]}")
+            docker stop "$CONTAINER_NAME" >/dev/null
+        fi
+    fi
+fi
+
 # 1. Mount Workspace Roots
 for root in "${WORKSPACE_ROOTS[@]}"; do
     ABS_ROOT=$(realpath -m "$root")
     if [ -d "$ABS_ROOT" ]; then
-        EXTRA_MOUNTS+=("-v" "${ABS_ROOT}:${ABS_ROOT}")
-        ROOT_PATHS_LIST="${ROOT_PATHS_LIST}${ABS_ROOT}:"
+        # Deduplication check: Avoid mounting same path twice if merged
+        if [[ "$ROOT_PATHS_LIST" != *"$ABS_ROOT"* ]]; then
+            EXTRA_MOUNTS+=("-v" "${ABS_ROOT}:${ABS_ROOT}")
+            ROOT_PATHS_LIST="${ROOT_PATHS_LIST}${ABS_ROOT}:"
+        fi
     else
         echo "Warning: Workspace root '$ABS_ROOT' does not exist. Skipping."
     fi
@@ -128,13 +191,6 @@ fi
 echo ">> Starting Gemini Hub on port $PORT..."
 echo ">> Access at http://localhost:$PORT (Desktop)"
 echo ">> Access at http://gemini-hub:8888 (Mobile VPN)"
-
-# Check if already running
-if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-    echo "Error: A Hub instance ('$CONTAINER_NAME') is already running."
-    echo "Run 'gemini-hub stop' to shut it down before starting a new one."
-    exit 1
-fi
 
 # Run Container
 docker run --rm $MODE \
