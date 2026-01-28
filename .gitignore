@@ -18,4 +18,4 @@ images/gemini-cli-preview/docker-entrypoint.sh
 tmp/
 
 # python
-__pycache__
+__pycache__.coverage
