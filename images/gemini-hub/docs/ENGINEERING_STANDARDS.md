@@ -77,5 +77,59 @@ When executing shell commands (e.g., `gemini-toolbox`, `tailscale`):
 
 ## 5. Testing Strategy
 
-*   **Unit Tests:** Focus on `app/services/`. These should run fast and mock external calls (like `subprocess`).
-*   **Integration Tests:** Use `pytest-flask` to test API endpoints (`/api/...`) against a test app instance.
+### 5.1 Framework & Tools
+*   **Runner:** Use `pytest` as the standard test runner.
+*   **Plugins:** Use `pytest-flask` for testing API routes and `pytest-mock` for mocking dependencies.
+*   **Coverage:** Use `pytest-cov` to measure code coverage.
+
+### 5.2 Directory Structure
+Mirror the application structure within a `tests/` directory at the project root:
+```text
+tests/
+├── conftest.py          # Shared fixtures (e.g., app instance, mock config)
+├── unit/                # Fast, isolated tests
+│   ├── test_services.py
+│   └── ...
+└── integration/         # Tests involving the Flask context
+    ├── test_api_routes.py
+    └── ...
+```
+
+### 5.3 Unit Testing Rules
+*   **Target:** Focus on `app/services/` and utility functions.
+*   **Isolation:** Unit tests **must not** perform IO operations (network requests, file system writes, subprocess execution).
+*   **Mocking:** Use `unittest.mock` or `pytest-mock` to stub out external systems (e.g., `subprocess.run`, `tailscale` CLI calls).
+*   **Atomicity:** Follow the "One Logical Assertion" rule. Do not group multiple unrelated checks into a single test. If a function has three distinct outcomes, write three distinct tests (e.g., `test_launch_success`, `test_launch_failure_permission`, `test_launch_failure_timeout`).
+*   **Speed:** The entire unit test suite should run in under 2 seconds.
+
+### 5.4 Integration Testing Rules
+*   **Target:** Focus on `app/api/` and `app/web/`.
+*   **Context:** Use the `client` fixture provided by `pytest-flask` to simulate HTTP requests.
+*   **Scope:** Verify that the correct status codes (200, 400, 500) and JSON structures are returned for valid and invalid inputs.
+
+### 5.5 Coverage Mandates
+While we follow the Testing Trophy, we still enforce high coverage standards to prevent regressions:
+*   **API Routes:** **100% coverage** is mandatory for all route handlers (testing happy paths, validation errors, and server errors).
+*   **Business Logic:** **90% coverage** is required for all modules in `app/services/`.
+*   **Utilities:** **100% coverage** for pure helper functions and data parsers.
+
+### 5.6 Testing Philosophy (The "Testing Trophy")
+*   **The Concept:** We subscribe to the "Testing Trophy" model (popularized by Kent C. Dodds) rather than the traditional "Testing Pyramid".
+    *   **Static (Types/Linting):** The foundation. (Handled by `ruff` and `mypy`).
+    *   **Unit Tests (Smallest):** Keep them for complex algorithmic logic (e.g., parsing weird Tailscale JSON).
+    *   **Integration Tests (The Bulk):** Test the API endpoints (e.g., `POST /api/launch`) and assembled services.
+    *   **E2E (Critical Paths):** Test the full flow only for critical user journeys.
+
+*   **Mocking Principle: "Mock at the Boundary Only"**
+    *   **Do Not Mock Internal Collaborators:** When testing a Service or API, do *not* mock your own internal helper classes or functions. Doing so leads to brittle tests that pass even when the system is broken ("testing the mocks").
+    *   **Mock Only the Outside World:** Mocks should be restricted to the **system boundaries** (the "leaves" of the call graph).
+        *   **Allowed Mocks:** `subprocess.run`, `requests.get`, `open()` (file I/O), `time.sleep`.
+        *   **Forbidden Mocks:** `Config` class, `TailscaleParser` class, or any other code *we own*.
+    *   **Goal:** Execute the code path through the full application stack (API -> Service -> Logic) and only fake the final system call.
+
+*   **Target Distribution:**
+    *   **Integration:** ~80% of your effort. This gives the highest confidence per minute spent.
+    *   **Unit:** ~10%. Only for logic that is too complex to test via the API or has too many permutations.
+    *   **E2E:** ~10%. Only for "smoke testing" the critical paths.
+
+*   **Guideline:** "Prioritize Integration Tests for API Endpoints." Tests that verify the *behavior* of the API (input -> output) are more resilient to refactoring than unit tests that verify the *implementation details* of a service.
