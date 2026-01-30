@@ -15,6 +15,7 @@ images/gemini-cli-preview/docker-entrypoint.sh
 # Temporary Files
 *.log
 tmp/
+AGENT_NOTES.md
 
 # python
 __pycache__/
