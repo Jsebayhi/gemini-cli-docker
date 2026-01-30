@@ -76,14 +76,14 @@ def test_get_config_details(client, tmp_path):
     # Setup: Create real profile and file
     profile_dir = tmp_path / "profile1"
     profile_dir.mkdir()
-    (profile_dir / "extra-args").write_text("--full\n--volume /data:/data")
+    (profile_dir / "extra-args").write_text("--preview\n--volume /data:/data")
 
     with patch("app.config.Config.HOST_CONFIG_ROOT", str(tmp_path)):
         response = client.get('/api/config-details?name=profile1')
         
         assert response.status_code == 200
         assert "extra_args" in response.json
-        assert "--full" in response.json["extra_args"]
+        assert "--preview" in response.json["extra_args"]
 
 # --- Launcher Tests ---
 

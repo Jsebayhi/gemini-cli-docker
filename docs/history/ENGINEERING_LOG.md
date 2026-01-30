@@ -15,7 +15,7 @@
 **Problem:** The root directory was cluttered with build artifacts.
 **Solution:** Adopted a `images/<tool>` structure.
 *   `images/gemini-base`: System layer (Debian + Security Updates).
-*   `images/gemini-stack`: SDK layer (Java, Go, Maven).
+*   `images/gemini-stack`: SDK layer (Java, Go, Maven). [REMOVED 2026-01-30]
 *   `images/gemini-cli`: App layer (Node.js + Gemini).
 *   `Makefile`: Root orchestrator manages the build dependency graph.
 
@@ -23,7 +23,7 @@
 **Problem:** `apt-get upgrade` is slow and bandwidth-intensive on every rebuild.
 **Solution:** Split the build into tiers.
 *   **Tier 1 (Base):** OS + Security patches. Built weekly.
-*   **Tier 2 (Stack):** Heavy compilers (Java 8/17/21, Go, Maven). Built monthly.
+*   **Tier 2 (Stack):** Heavy compilers (Java 8/17/21, Go, Maven). [REMOVED 2026-01-30]
 *   **Tier 3 (App):** `npm install gemini-cli`. Built daily.
 This ensures instant rebuilds for app changes while maintaining security.
 
@@ -51,3 +51,12 @@ This ensures instant rebuilds for app changes while maintaining security.
         $(MAKE) tag-version
     ```
 *   This ensures `rebuild` completes successfully before `tag-version` attempts to query the image version, even when the global build is running in parallel.
+
+## 2026-01-30: Image Streamlining & Docker-Powered Orchestration
+
+### 1. Removal of "Full" Image Variant
+**Problem:** The "Full" image (`gemini-cli-full`) and its SDK layer (`gemini-stack`) were heavy (~2GB) and difficult to maintain. They required pre-installing multiple versions of Java, Go, and Scala.
+**Solution:** Leveraged Docker-out-of-Docker (DooD) capabilities.
+*   Removed the `--full` flag and associated image variants.
+*   Updated documentation to emphasize the "Manager" pattern: the agent can now use the host's Docker daemon to run any language-specific tool in its own container.
+*   This reduces the project's disk footprint and maintenance overhead while increasing flexibility.

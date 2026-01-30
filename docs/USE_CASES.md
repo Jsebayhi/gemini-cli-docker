@@ -30,17 +30,17 @@ gemini-toolbox --remote tskey-auth-xxxxxx
 *   **Workflow:** Open `http://gemini-hub:8888` on your phone. Tap your project. You now have a full terminal with the Gemini agent.
 *   **Advantage:** Full coding power on a tablet without SSH apps or complex setups.
 
-## 3. The Polyglot Builder (Full Stack Image)
-**Persona:** Java/Scala/Go Developer
-**Goal:** Build and test compiled languages without installing SDKs.
+## 3. The Polyglot Builder (Docker-Powered)
+**Persona:** Java/Scala/Go/Rust Developer
+**Goal:** Build and test any language without installing SDKs on your host.
 
-The standard image is lightweight, but the **Full** image (`--full`) comes with JDK 8/17/21, Go, Python, and Node.js pre-installed.
+The toolbox connects to your host's Docker daemon. Instead of heavy images with pre-installed SDKs, the agent can use Docker to run the appropriate build tools for your project.
 
 ```bash
-gemini-toolbox --full "Run the tests for this Spring Boot application"
+gemini-toolbox "Run the tests for this Rust project using cargo"
 ```
-*   **Workflow:** The agent can run `./mvnw test` or `go build` inside the container.
-*   **Advantage:** Keeps your host free of multiple JDK versions and build tools. It mounts your host caches (`~/.m2`), so builds are fast.
+*   **Workflow:** The agent can run `docker run --rm -v $(pwd):/app -w /app rust:latest cargo test`.
+*   **Advantage:** Keeps your host free of multiple SDK versions and build tools. It leverages your host's Docker cache for fast image reuse.
 
 ## 4. The DevOps Architect (Docker-out-of-Docker)
 **Persona:** SRE / Platform Engineer

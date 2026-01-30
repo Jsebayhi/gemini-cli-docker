@@ -23,12 +23,12 @@ def test_get_config_details_real_fs(tmp_path):
     profile_dir = tmp_path / "work"
     profile_dir.mkdir()
     extra_args_file = profile_dir / "extra-args"
-    extra_args_file.write_text("--full\n# Comment\n--volume /foo:/bar")
+    extra_args_file.write_text("--preview\n# Comment\n--volume /foo:/bar")
     
     with patch("app.config.Config.HOST_CONFIG_ROOT", str(tmp_path)):
         details = FileSystemService.get_config_details("work")
         
-        assert "--full" in details["extra_args"]
+        assert "--preview" in details["extra_args"]
         assert "--volume /foo:/bar" in details["extra_args"]
         assert "# Comment" not in details["extra_args"]
 

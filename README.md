@@ -6,7 +6,7 @@
 **GitHub Repository:** [Jsebayhi/gemini-cli-toolbox](https://github.com/Jsebayhi/gemini-cli-toolbox) | **Docker Hub:** [jsebayhi/gemini-cli-toolbox](https://hub.docker.com/r/jsebayhi/gemini-cli-toolbox)
 
 > **A zero-config, secure sandbox for the Gemini CLI.** Keep your AI agent fully integrated with your development environment while protecting your host.
->
+> 
 > *   **🚀 Zero Config:** No Node.js, Python, or SDK setup required on your host. Just run the script.
 > *   **🛡️ Secure Sandbox:** Just as the agent cannot edit files outside your project, any command/script run by the agent is trapped in the container, guaranteeing no side effects outside your project folder.
 > *   **💻 VS Code Companion:** Native integration with your host IDE for context and diffs.
@@ -131,21 +131,17 @@ gemini-toolbox stop-hub
 ```
 
 ### 🧰 Multiple Flavors
-We provide three variants of the tool:
+We provide two variants of the tool:
 
 | Flag | Image Tag | Description |
 | :--- | :--- | :--- |
 | `(default)` | `:latest` | **Stable**. The standard Gemini CLI experience. |
 | `--preview` | `:latest-preview` | **Beta**. Access the latest features from the preview branch. |
-| `--full` | `:latest-full` | **Batteries Included**. Pre-installed Java, Go, Python, and Node.js runtimes for executing complex code. |
 
 **Example:**
 ```bash
 # Use the preview version
 gemini-toolbox --preview -i "Try out the latest beta features"
-
-# Use the full stack for compiling Java/Go code
-gemini-toolbox --full "Run the tests in this Java project"
 ```
 
 ### 🧹 Multi-Account Management
@@ -201,7 +197,7 @@ gemini-toolbox --profile ~/.gemini-profiles/work chat
 **Structure:**
 ```text
 ~/.gemini-profiles/work/
-├── extra-args          # Persistent flags (e.g., --full, --volume ...)
+├── extra-args          # Persistent flags (e.g., --volume ...)
 ├── .gemini/            # Auto-generated: stores history, cookies, and keys
 └── secrets/            # Your private files
 ```
@@ -214,13 +210,10 @@ gemini-toolbox --config ~/.old-gemini chat
 ```
 
 #### Persistent Settings (`extra-args`)
-**Only supported in Profile Mode (`--profile`).** Instead of typing `-v` or `--full` every time, you can put them in an `extra-args` file.
+**Only supported in Profile Mode (`--profile`).** Instead of typing `-v` or `--preview` every time, you can put them in an `extra-args` file.
 
 **Example `extra-args`:**
 ```text
-# Always use the full image for work
---full
-
 # Mount my work-specific documents
 --volume "/mnt/data/work-docs:/docs"
 ```

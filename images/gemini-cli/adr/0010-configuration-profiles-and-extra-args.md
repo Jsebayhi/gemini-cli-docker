@@ -13,7 +13,7 @@ We previously established the use of `--config` to specify a configuration direc
 However, users also need to customize the **runtime environment** per profile. Common requirements include:
 *   Mounting specific host directories (e.g., a "Work" documents folder).
 *   Setting specific environment variables.
-*   Enforcing specific toolbox flags (e.g., always use `--full` image for a Java project).
+*   Enforcing specific toolbox flags (e.g., always use `--preview` image).
 
 Before this ADR, users had to pass these arguments manually every time they invoked the toolbox, or create wrapper scripts. The `gemini-hub` also had no way to know which additional volumes were required for a specific profile.
 
@@ -53,13 +53,13 @@ The script will exit with an error if both `--config` and `--profile` are provid
 
 ### 3. Semantics: Toolbox Arguments
 The contents of `extra-args` are treated as **arguments to the `gemini-toolbox` script**, not just raw Docker arguments.
-*   **Why:** This provides maximum flexibility. Users can define volumes (`-v`), env vars (`-e`), or toolbox behaviors (`--full`, `--no-ide`, `--preview`).
+*   **Why:** This provides maximum flexibility. Users can define volumes (`-v`), env vars (`-e`), or toolbox behaviors (`--no-ide`, `--preview`).
 *   **Parsing:** One argument per line is recommended for readability, but space-separated arguments are supported. Comments (`#`) are ignored.
 
 ### 3. Precedence: CLI Overrides Profile
 The arguments from `extra-args` are prepended to the command-line arguments.
 *   **Order:** `[extra-args] [cli-args]`
-*   **Effect:** Since the toolbox parses arguments sequentially, and later flags typically override earlier ones (e.g., `VARIANT="preview"` then `VARIANT="full"`), explicit CLI arguments will override profile defaults.
+*   **Effect:** Since the toolbox parses arguments sequentially, and later flags typically override earlier ones (e.g., `VARIANT="preview"`), explicit CLI arguments will override profile defaults.
 *   **Exception:** Accumulative arguments (like `--volume` or `--docker-args`) are additive. Both the profile's volumes and the CLI's volumes will be mounted.
 
 ### 4. Implementation Details
@@ -78,7 +78,7 @@ The `gemini-toolbox` script performs a "Pre-scan" pass:
 ## Example
 **File:** `~/.gemini-work/extra-args`
 ```text
---full
+--preview
 --volume /home/user/work:/work
 --env COMPANY_ID=123
 ```
@@ -89,5 +89,5 @@ gemini-toolbox --config ~/.gemini-work
 ```
 **Effective Command:**
 ```bash
-gemini-toolbox --full --volume /home/user/work:/work --env COMPANY_ID=123 --config ~/.gemini-work
+gemini-toolbox --preview --volume /home/user/work:/work --env COMPANY_ID=123 --config ~/.gemini-work
 ```

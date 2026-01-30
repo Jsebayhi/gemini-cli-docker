@@ -34,16 +34,6 @@ build-cli-preview: build-base
 	@echo ">> Building gemini-cli-preview..."
 	$(MAKE) -C images/gemini-cli-preview build
 
-.PHONY: build-stack
-build-stack: build-base
-	@echo ">> Building gemini-stack..."
-	$(MAKE) -C images/gemini-stack build
-
-.PHONY: build-cli-full
-build-cli-full: build-stack
-	@echo ">> Building gemini-cli-full..."
-	$(MAKE) -C images/gemini-cli-full build
-
 .PHONY: build-hub
 build-hub:
 	@echo ">> Building gemini-hub..."
@@ -51,7 +41,7 @@ build-hub:
 
 # Main Build Entrypoint
 .PHONY: build
-build: build-cli build-cli-preview build-cli-full build-hub
+build: build-cli build-cli-preview build-hub
 
 # --- Rebuild Targets (No Cache) ---
 
@@ -70,16 +60,6 @@ rebuild-cli-preview: rebuild-base
 	@echo ">> Rebuilding gemini-cli-preview..."
 	$(MAKE) -C images/gemini-cli-preview rebuild
 
-.PHONY: rebuild-stack
-rebuild-stack: rebuild-base
-	@echo ">> Rebuilding gemini-stack..."
-	$(MAKE) -C images/gemini-stack rebuild
-
-.PHONY: rebuild-cli-full
-rebuild-cli-full: rebuild-stack
-	@echo ">> Rebuilding gemini-cli-full..."
-	$(MAKE) -C images/gemini-cli-full rebuild
-
 .PHONY: rebuild-hub
 rebuild-hub:
 	@echo ">> Rebuilding gemini-hub..."
@@ -87,7 +67,7 @@ rebuild-hub:
 
 # Main Rebuild Entrypoint
 .PHONY: rebuild
-rebuild: rebuild-cli rebuild-cli-preview rebuild-cli-full rebuild-hub
+rebuild: rebuild-cli rebuild-cli-preview rebuild-hub
 
 # --- Fast Update Targets (App Layer Only) ---
 
@@ -101,14 +81,9 @@ rebuild-cli-preview-only:
 	@echo ">> Rebuilding gemini-cli-preview (App Layer)..."
 	$(MAKE) -C images/gemini-cli-preview rebuild
 
-.PHONY: rebuild-cli-full-only
-rebuild-cli-full-only:
-	@echo ">> Rebuilding gemini-cli-full (App Layer)..."
-	$(MAKE) -C images/gemini-cli-full rebuild
-
 # Rebuild only the applications (Parallelizable)
 .PHONY: rebuild-gemini-cli
-rebuild-gemini-cli: rebuild-cli-only rebuild-cli-preview-only rebuild-cli-full-only
+rebuild-gemini-cli: rebuild-cli-only rebuild-cli-preview-only
 
 # --- Quality Assurance (Lint & Test) ---
 
@@ -146,11 +121,6 @@ ci-preview: rebuild-base
 	@echo ">> CI: Building & Tagging gemini-cli-preview..."
 	$(MAKE) -C images/gemini-cli-preview ci
 
-.PHONY: ci-full
-ci-full: rebuild-stack
-	@echo ">> CI: Building & Tagging gemini-cli-full..."
-	$(MAKE) -C images/gemini-cli-full ci
-
 .PHONY: ci-hub
 ci-hub:
 	@echo ">> CI: Building gemini-hub..."
@@ -158,7 +128,7 @@ ci-hub:
 
 # Main CI Entrypoint
 .PHONY: ci
-ci: ci-cli ci-preview ci-full ci-hub
+ci: ci-cli ci-preview ci-hub
 
 # Security Scan (Delegate to components)
 .PHONY: scan
@@ -169,8 +139,6 @@ scan:
 	$(MAKE) -C images/gemini-cli scan
 	@echo ">> Scanning gemini-cli-preview..."
 	$(MAKE) -C images/gemini-cli-preview scan
-	@echo ">> Scanning gemini-cli-full..."
-	$(MAKE) -C images/gemini-cli-full scan
 
 .PHONY: clean-cache
 clean-cache:

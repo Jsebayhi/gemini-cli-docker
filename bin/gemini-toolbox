@@ -21,7 +21,6 @@ show_help() {
     echo "Usage: gemini-toolbox [OPTIONS] [-- APP_ARGS]"
     echo ""
     echo "Options:"
-    echo "  --full               Use the full image (Java 8/17/21, Go, Scala)"
     echo "  --preview            Use the preview image (Latest Beta CLI)"
     echo "  --no-ide             Disable VS Code integration (bypass companion extension)"
     echo "  --no-docker          Disable Docker-out-of-Docker integration (Sandbox Mode)"
@@ -47,7 +46,7 @@ show_help() {
 # 0. Pre-scan for Config & Load Extra Args
 # We scan CLI args for --config to locate the profile directory.
 # Then we load 'extra-args' (if present) and prepend them to the argument list.
-# This allows profiles to define toolbox flags (like --full, --no-ide) in addition to docker args.
+# This allows profiles to define toolbox flags (like --no-ide) in addition to docker args.
 # 0. Pre-scan for Config/Profile & Load Extra Args
 # We scan CLI args for --config or --profile to locate the directory.
 # --profile: Use directory as root, mount .gemini subdir (ENABLE_PROFILE_MODE=true)
@@ -113,7 +112,6 @@ DETACHED_MODE=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --full)        VARIANT="full"; shift ;;
     --preview)     VARIANT="preview"; shift ;;
     --no-ide)      ENABLE_VSCODE_INTEGRATION=false;   shift ;;
     --no-docker)   ENABLE_DOCKER=false;               shift ;;
@@ -214,10 +212,7 @@ GEMINI_SESSION_ID="gem-${PROJECT_NAME}-${SESSION_TYPE}-${GEN_UUID}"
 CONTAINER_NAME_ARG=("--name" "${GEMINI_SESSION_ID}")
 
 # 2.2 Resolve Image Name (Local vs Remote)
-if [ "$VARIANT" == "full" ]; then
-    LOCAL_TAG="gemini-cli-toolbox/cli-full:latest"
-    REMOTE_TAG="${DOCKER_HUB_USER}/gemini-cli-toolbox:latest-full"
-elif [ "$VARIANT" == "preview" ]; then
+if [ "$VARIANT" == "preview" ]; then
     LOCAL_TAG="gemini-cli-toolbox/cli-preview:latest"
     REMOTE_TAG="${DOCKER_HUB_USER}/gemini-cli-toolbox:latest-preview"
 else
