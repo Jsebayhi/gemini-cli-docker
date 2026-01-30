@@ -30,11 +30,13 @@ show_help() {
     echo "  --docker-args <str>  Additional arguments passed to 'docker run' (e.g., mounts)"
     echo "  --remote <key>       Enable Tailscale VPN for remote access (Container Mode)"
     echo "  --bash               Start a bash shell instead of the Gemini CLI"
+    echo "  --detached           Start the container in background and exit (useful for Hub)"
     echo "  --help               Show this help message"
     echo ""
     echo "Commands:"
     echo "  update               Force update the Docker image from the registry"
     echo "  stop-hub             Stop the background Gemini Hub service"
+    echo "  connect <id>         Attach to a running background session"
     echo ""
     echo "Examples:"
     echo "  gemini-toolbox chat"
@@ -42,11 +44,72 @@ show_help() {
     echo "  gemini-toolbox --config ~/.gemini-work -- --help"
 }
 
+# 0. Pre-scan for Config & Load Extra Args
+# We scan CLI args for --config to locate the profile directory.
+# Then we load 'extra-args' (if present) and prepend them to the argument list.
+# This allows profiles to define toolbox flags (like --full, --no-ide) in addition to docker args.
+# 0. Pre-scan for Config/Profile & Load Extra Args
+# We scan CLI args for --config or --profile to locate the directory.
+# --profile: Use directory as root, mount .gemini subdir (ENABLE_PROFILE_MODE=true)
+# --config: Use directory directly (ENABLE_PROFILE_MODE=false)
+TEMP_CONF="$HOST_CONF_DIR"
+ENABLE_PROFILE_MODE=false
+HAS_CONFIG=false
+HAS_PROFILE=false
+
+iter_args=("$@")
+for ((i=0; i<${#iter_args[@]}; i++)); do
+    case "${iter_args[i]}" in
+        --config)
+            TEMP_CONF="${iter_args[i+1]}"
+            ENABLE_PROFILE_MODE=false
+            HAS_CONFIG=true
+            ;;
+        --profile)
+            TEMP_CONF="${iter_args[i+1]}"
+            ENABLE_PROFILE_MODE=true
+            HAS_PROFILE=true
+            ;;
+    esac
+done
+
+# Guard against ambiguous usage
+if [ "$HAS_CONFIG" = true ] && [ "$HAS_PROFILE" = true ]; then
+    echo "Error: Cannot use both --config and --profile simultaneously." >&2
+    echo "Choose one: --config for simple directory mount, or --profile for nested workspace." >&2
+    exit 1
+fi
+
+# Resolve absolute path for check
+TEMP_CONF=$(realpath -m "$TEMP_CONF")
+FILE_ARGS=()
+
+if [ "$ENABLE_PROFILE_MODE" = true ] && [ -f "${TEMP_CONF}/extra-args" ]; then
+    echo ">> Loading profile args from ${TEMP_CONF}/extra-args"
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Trim leading whitespace
+        line="${line#"${line%%[![:space:]]*}"}"
+        # Ignore empty lines and comments
+        if [[ -n "$line" && ! "$line" =~ ^# ]]; then
+             # Use eval to properly parse quotes arguments (like shell would)
+             eval "PARTS=($line)"
+             FILE_ARGS+=("${PARTS[@]}")
+        fi
+    done < "${TEMP_CONF}/extra-args"
+fi
+
+# Combine: File Args first, then CLI args (so CLI overrides File)
+if [ ${#FILE_ARGS[@]} -gt 0 ]; then
+    # We must reset the positional parameters to the combined list
+    set -- "${FILE_ARGS[@]}" "$@"
+fi
+
 # 1. Parse Arguments
 ARGS=()
 REMOTE_MODE=false
 TAILSCALE_KEY="${GEMINI_REMOTE_KEY:-}"
 ENABLE_DOCKER=true
+DETACHED_MODE=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -55,8 +118,10 @@ while [[ $# -gt 0 ]]; do
     --no-ide)      ENABLE_VSCODE_INTEGRATION=false;   shift ;;
     --no-docker)   ENABLE_DOCKER=false;               shift ;;
     --config)      HOST_CONF_DIR="$2"; shift; shift ;;
+    --profile)     HOST_CONF_DIR="$2"; ENABLE_PROFILE_MODE=true; shift; shift ;;
     --project)     PROJECT_DIR="$2";   shift; shift ;;
     --bash)        USE_BASH=true;      shift ;;
+    --detached)    DETACHED_MODE=true; shift ;;
     --remote)      
         REMOTE_MODE=true
         # Optional argument: Check if next arg exists AND starts with 'tskey-'
@@ -72,21 +137,32 @@ while [[ $# -gt 0 ]]; do
         shift; shift 
         ;;
     -v|--volume)
-        EXTRA_DOCKER_ARGS+=("-v" "$2")
+        EXTRA_DOCKER_ARGS+=("--volume" "$2")
         shift; shift
         ;;
     --help)        show_help; exit 0 ;;
     update)        FORCE_UPDATE=true; shift ;;
     stop-hub)      STOP_HUB=true; shift ;;
+    connect)       CONNECT_ID="$2"; shift; shift ;;
     --)            shift; ARGS+=("$@"); break ;;
     *)             ARGS+=("$1");       shift ;;
   esac
 done
 
 # 2. Setup Directories
-# ... (rest of the directory setup logic) ...
-# (I'll keep the context small for the replacement tool)
+# HOST_CONF_DIR might be passed as relative or absolute.
+# We resolve it to absolute to ensure Docker mounts work correctly.
 HOST_CONF_DIR=$(realpath -m "$HOST_CONF_DIR")
+
+# Profile Root Logic (Post-Parse)
+# If ENABLE_PROFILE_MODE is true (user passed --config), we treat the path as a "Profile Root".
+# The actual Gemini Configuration (history, keys) lives in a '.gemini' subdirectory.
+# This keeps the Profile Root clean for extra-args and user files.
+PROFILE_ROOT=""
+if [ "$ENABLE_PROFILE_MODE" = true ]; then
+    PROFILE_ROOT="$HOST_CONF_DIR"
+    HOST_CONF_DIR="${HOST_CONF_DIR}/.gemini"
+fi
 mkdir -p "$HOST_CONF_DIR"
 
 # 2.1 Pre-create Host Cache Directories (As User)
@@ -114,8 +190,9 @@ if [ ! -d "$PROJECT_DIR" ]; then
     exit 1
 fi
 
-# Extract project name for prettier mount point
-PROJECT_NAME=$(basename "$PROJECT_DIR")
+# Extract project name for prettier mount point.
+# We sanitize it to ensure it is a valid DNS label (only alphanumeric and hyphens).
+PROJECT_NAME=$(basename "$PROJECT_DIR" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
 
 # Determine Session Type for Remote Access / Analytics
 SESSION_TYPE="geminicli"
@@ -188,7 +265,21 @@ if [ "$STOP_HUB" = true ]; then
     fi
 fi
 
-# 2.5 Stale Image Warning
+# 2.5 Handle Connect
+if [ -n "$CONNECT_ID" ]; then
+    echo ">> Connecting to session '$CONNECT_ID'..."
+    # Use current user's UID
+    CURRENT_UID=$(id -u)
+    
+    if [[ "$CONNECT_ID" == *"-bash-"* ]]; then
+         echo ">> Opening Bash shell..."
+         exec docker exec -it "$CONNECT_ID" gosu "$CURRENT_UID" bash
+    else
+         exec docker exec -it "$CONNECT_ID" gosu "$CURRENT_UID" tmux attach -t gemini
+    fi
+fi
+
+# 2.6 Stale Image Warning
 # Only if using remote image, it is a 'latest' tag, AND it is > 7 days old
 if [[ "$IMAGE_NAME" == *"$REMOTE_TAG"* ]] && [[ "$IMAGE_NAME" == *"latest"* ]] && docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
     CREATED=$(docker inspect --format='{{.Created}}' "$IMAGE_NAME")
@@ -202,7 +293,7 @@ if [[ "$IMAGE_NAME" == *"$REMOTE_TAG"* ]] && [[ "$IMAGE_NAME" == *"latest"* ]] &
     fi
 fi
 
-# 2.5 Detect Host Docker GID (for DooD)
+# 2.7 Detect Host Docker GID (for DooD)
 if [ "$ENABLE_DOCKER" = true ]; then
     HOST_DOCKER_GID=""
     if command -v getent >/dev/null 2>&1 && getent group docker >/dev/null 2>&1; then
@@ -235,11 +326,30 @@ if [ "$REMOTE_MODE" = true ]; then
         SCRIPT_DIR="$( cd -P "$( dirname "$REAL_SOURCE" )" >/dev/null 2>&1 && pwd )"
         
         HUB_SCRIPT="${SCRIPT_DIR}/gemini-hub"
-        echo "DEBUG: HUB_SCRIPT is at ${HUB_SCRIPT}"
         if [ -x "$HUB_SCRIPT" ]; then
              echo ">> Auto-starting Gemini Hub..."
-             echo "   (Stop with: gemini-hub stop)"
-             if "$HUB_SCRIPT" -d --key "$TAILSCALE_KEY" > /tmp/gemini-hub.log 2>&1; then
+             echo "   (Stop with: gemini-toolbox stop-hub)"
+             
+             HUB_ARGS=("-d" "--key" "$TAILSCALE_KEY" "--workspace" "$PROJECT_DIR")
+             
+             # If running in Profile Mode, ask user if they want to expose the parent directory to the Hub
+             if [ "$ENABLE_PROFILE_MODE" = true ] && [ -n "$PROFILE_ROOT" ]; then
+                 HUB_CONFIG_ROOT=$(dirname "$PROFILE_ROOT")
+                 
+                 # Only ask if interactive. If NOT interactive, we don't share the parent.
+                 if [ -t 0 ]; then
+                     echo ""
+                     echo ">> Profile Mode detected: ${PROFILE_ROOT}"
+                     echo ">> The Hub can scan the parent directory (${HUB_CONFIG_ROOT}) to let you switch profiles easily."
+                     read -p ">> Allow Hub to scan parent directory? [y/N] " -n 1 -r
+                     echo ""
+                     if [[ $REPLY =~ ^[Yy]$ ]]; then
+                         HUB_ARGS+=("--config-root" "$HUB_CONFIG_ROOT")
+                     fi
+                 fi
+             fi
+             
+             if "$HUB_SCRIPT" "${HUB_ARGS[@]}" > /tmp/gemini-hub.log 2>&1; then
                  echo ">> Hub started."
              else
                  echo ">> Warning: Failed to start Hub. Check /tmp/gemini-hub.log"
@@ -260,9 +370,9 @@ if [ "$REMOTE_MODE" = true ]; then
     )
 fi
 
-DOCKER_CMD=(
-  docker run --rm -it "${CONTAINER_NAME_ARG[@]}"
-  $NETWORK_MODE
+DOCKER_ARGS=(
+  "${CONTAINER_NAME_ARG[@]}"
+  "$NETWORK_MODE"
   # Path Mirroring for IDE Security Check:
   # We mount the project at the EXACT SAME path as the host (not /home/gemini/workspace).
   # The Gemini CLI checks that PWD inside match the Workspace Path in VS Code.
@@ -276,12 +386,12 @@ DOCKER_CMD=(
   --volume "${HOME}/.cache/coursier:/home/gemini/.cache/coursier"
   --volume "${HOME}/go/pkg/mod:/home/gemini/go/pkg/mod"
   --volume "${HOME}/.cache/go-build:/home/gemini/.cache/go-build"
-  --env DEFAULT_UID="$(id -u)"
-  --env DEFAULT_GID="$(id -g)"
+  --env DEFAULT_UID="${HOST_UID:-$(id -u)}"
+  --env DEFAULT_GID="${HOST_GID:-$(id -g)}"
   --env GEMINI_SESSION_ID="${GEMINI_SESSION_ID}"
   --env GEMINI_PROJECT_NAME="${PROJECT_NAME}"
   --env GEMINI_SESSION_TYPE="${SESSION_TYPE}"
-  --env TERM
+  --env TERM="${TERM:-xterm-256color}"
   --env LANG
   --env LC_ALL
   --env HTTP_PROXY --env HTTPS_PROXY --env NO_PROXY
@@ -292,7 +402,7 @@ DOCKER_CMD=(
 
 # Conditionally Add Docker Support
 if [ "$ENABLE_DOCKER" = true ]; then
-    DOCKER_CMD+=(
+    DOCKER_ARGS+=(
       # Docker-out-of-Docker Support
       --volume "/var/run/docker.sock:/var/run/docker.sock"
       --env HOST_DOCKER_GID="${HOST_DOCKER_GID}"
@@ -303,7 +413,7 @@ fi
 
 # Conditionally Add IDE Integration
 if [ "$ENABLE_VSCODE_INTEGRATION" = true ]; then
-    DOCKER_CMD+=(
+    DOCKER_ARGS+=(
       # VS Code Integration:
       # 1. TERM_PROGRAM*: Tells Gemini CLI we are inside VS Code (enables the feature).
       # 2. GEMINI_CLI_IDE_*: Connection details passed from the Host Terminal.
@@ -317,13 +427,23 @@ if [ "$ENABLE_VSCODE_INTEGRATION" = true ]; then
     )
 fi
 
-# 4. Execute
+# 4. Assemble Execution Arguments
+EXEC_ARGS=()
 if [ "$USE_BASH" = true ]; then
-    echo "Starting in BASH mode..."
-    "${DOCKER_CMD[@]}" \
-      --entrypoint /usr/local/bin/docker-entrypoint.sh \
-      "$IMAGE_NAME" bash "${ARGS[@]}"
+    echo ">> Mode: BASH"
+    EXEC_ARGS=("--entrypoint" "/usr/local/bin/docker-entrypoint.sh" "$IMAGE_NAME" "bash" "${ARGS[@]}")
 else
-    "${DOCKER_CMD[@]}" \
-      "$IMAGE_NAME" "${ARGS[@]}"
+    EXEC_ARGS=("$IMAGE_NAME" "${ARGS[@]}")
+fi
+
+# 5. Execute
+if [ "$DETACHED_MODE" = true ]; then
+    echo ">> Starting container in background..."
+    docker run --rm -d "${DOCKER_ARGS[@]}" "${EXEC_ARGS[@]}"
+    echo ">> Container started: ${GEMINI_SESSION_ID}"
+else
+    if [ "$USE_BASH" = true ]; then
+        echo "Starting in BASH mode..."
+    fi
+    docker run --rm -it "${DOCKER_ARGS[@]}" "${EXEC_ARGS[@]}"
 fi
