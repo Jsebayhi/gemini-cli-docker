@@ -96,15 +96,6 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL'
 
-      - name: Security Scan (Gemini Full)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'gemini-cli-toolbox/cli-full:latest'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          severity: 'CRITICAL'
-
       - name: Log in to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
@@ -135,16 +126,8 @@ jobs:
           docker tag gemini-cli-toolbox/cli-preview:latest $REPO:$PREVIEW_VER-preview
           docker push $REPO:$PREVIEW_VER-preview
 
-          # --- Full ---
-          # Tags: :latest-full, :X.Y.Z-full
-          docker tag gemini-cli-toolbox/cli-full:latest $REPO:latest-full
-          docker push $REPO:latest-full
-          
-          FULL_VER=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli-full:latest gemini --version | tr -d '\r')
-          docker tag gemini-cli-toolbox/cli-full:latest $REPO:$FULL_VER-full
-          docker push $REPO:$FULL_VER-full
-
           # --- Hub ---
+
           # Tags: :latest-hub, :X.Y.Z-hub (Hub versioning is independent, but we'll use a date or static version for now or just latest)
           # For simplicity and since it's an internal tool, we just push latest-hub for now.
           docker tag gemini-cli-toolbox/hub:latest $REPO:latest-hub

@@ -19,7 +19,7 @@ We will implement **Option 3: Docker-out-of-Docker (DooD)**.
 *   **Performance:** DooD incurs zero virtualization overhead. DinD requires complex storage drivers (UnionFS on UnionFS) which is slow and resource-heavy.
 *   **Cache Efficiency:** DooD shares the host's image cache. The agent does not need to re-download images that the user already has.
 *   **Architecture Fit:** The project already utilizes "Path Mirroring" (mounting the project directory at the exact same path inside the container as on the host). This resolves the primary downside of DooD, where volume mounts from inside the container typically fail because paths don't match the host.
-*   **Packaging Strategy:** We place the Docker CLI in `gemini-base` (adding ~50MB) rather than `gemini-cli-full`. This transforms the agent from a "Worker" (limited to installed tools) to a "Manager" (able to orchestrate any tool via Docker) across all image flavors.
+*   **Packaging Strategy:** We place the Docker CLI in `gemini-base` (adding ~50MB). This transforms the agent from a "Worker" (limited to installed tools) to a "Manager" (able to orchestrate any tool via Docker) across all image flavors.
 *   **Security Model & Intent:** The primary goal of the sandbox is **accidental corruption prevention**, not defense-in-depth against a malicious actor. We are protecting the host from the AI agent's potential "hallucinations" or reckless shell commands (e.g., `docker rm -f $(docker ps -aq)`) rather than a focused breakout attempt. The presence of the binary is acceptable because the security boundary is the socket mount; without the socket, the agent is structurally incapable of "accidentally" orchestrating the host.
 
 ## Consequences
