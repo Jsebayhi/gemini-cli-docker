@@ -2,34 +2,68 @@ let currentPath = "";
 let selectedConfig = "";
 
 document.addEventListener("DOMContentLoaded", () => {
-    checkLocalVisibility();
+    checkConnectivity();
 });
 
-function checkLocalVisibility() {
-    const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+async function checkConnectivity() {
+    const cards = document.querySelectorAll('.card');
     
-    document.querySelectorAll('.card').forEach(card => {
+    for (const card of cards) {
         const localBadge = card.querySelector('.local-badge');
         const mainLink = card.querySelector('.card-main-link');
         
-        if (!localBadge) return;
+        if (!localBadge) continue; // Offline or no local port
         
         const localUrl = localBadge.getAttribute('data-local-url');
-        const vpnUrl = mainLink.href;
+        const vpnUrl = mainLink.href; // Original VPN URL from template
         
-        if (isLocalhost && localUrl) {
-            // Smart Swap: Make the main card click go to Localhost
+        // 1. Probe Localhost
+        let localReachable = false;
+        if (localUrl && ['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+            localReachable = await probeUrl(localUrl);
+        }
+
+        // 2. Probe VPN
+        const vpnReachable = await probeUrl(vpnUrl);
+
+        // 3. Apply Logic
+        if (localReachable) {
+            // Priority: Localhost
             mainLink.href = localUrl;
             
-            // Retain VPN option in the badge
-            localBadge.href = vpnUrl;
-            localBadge.innerText = "VPN";
-            localBadge.classList.remove('hidden');
+            if (vpnReachable) {
+                // If VPN also works, show it as a badge
+                localBadge.href = vpnUrl;
+                localBadge.innerText = "VPN";
+                localBadge.classList.remove('hidden');
+                localBadge.title = "Connect via Tailscale IP";
+            } else {
+                // VPN unreachable? Hide badge.
+                localBadge.classList.add('hidden');
+            }
         } else {
-            // Remote User: Hide the Local badge completely
-            localBadge.classList.add('hidden');
+            // Local unreachable (or remote client)
+            // Main link remains VPN (default)
+            // Local badge remains hidden (default)
+             localBadge.classList.add('hidden');
         }
-    });
+    }
+}
+
+async function probeUrl(url) {
+    try {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 1500); // 1.5s timeout
+        
+        await fetch(url, {
+            mode: 'no-cors', // Opaque response is fine, we just want to know if it connects
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }
 
 function filterList() {
