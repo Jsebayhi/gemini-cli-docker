@@ -39,7 +39,8 @@
                 </a>
                 <div class="card-side">
                     {% if m.local_url %}
-                    <a href="{{ m.local_url }}" target="_blank" class="local-badge" title="Open Localhost">LOCAL</a>
+                    <!-- Hidden by default. JS will show if user is on localhost. -->
+                    <a href="{{ m.local_url }}" target="_blank" class="local-badge hidden" data-local-url="{{ m.local_url }}" title="Open Localhost">LOCAL</a>
                     {% endif %}
                     <div class="status {% if not m.online %}offline{% endif %}"></div>
                 </div>

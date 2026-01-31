@@ -1,6 +1,19 @@
 let currentPath = "";
 let selectedConfig = "";
 
+document.addEventListener("DOMContentLoaded", () => {
+    checkLocalVisibility();
+});
+
+function checkLocalVisibility() {
+    const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    if (!isLocalhost) return; // Keep them hidden
+
+    document.querySelectorAll('.local-badge').forEach(badge => {
+        badge.classList.remove('hidden');
+    });
+}
+
 function filterList() {
     const search = document.getElementById('projectFilter').value.toLowerCase();
     const type = document.getElementById('typeFilter').value;
@@ -178,9 +191,32 @@ async function doLaunch() {
             const match = (result.stdout || "").match(/Container started: (gem-[a-zA-Z0-9-]+)/);
             if (match && match[1]) {
                 const hostname = match[1];
-                btn.innerText = "Connect Now 🚀";
+                
+                // 1. VPN Button (Always valid)
+                btn.innerText = "Connect (VPN) 🚀";
                 btn.onclick = () => window.open(`http://${hostname}:3000`, '_blank');
                 btn.style.display = "block";
+                
+                // 2. Local Button (Only if on host)
+                if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+                    // Poll briefly for the port mapping to appear
+                    setTimeout(async () => {
+                        try {
+                            const res = await fetch(`/api/resolve-local-url?hostname=${hostname}`);
+                            const data = await res.json();
+                            if (data.url) {
+                                const localBtn = document.createElement('button');
+                                localBtn.className = "refresh-btn action-btn btn-small";
+                                localBtn.style.marginTop = "10px";
+                                localBtn.style.backgroundColor = "transparent";
+                                localBtn.style.border = "1px solid var(--accent)";
+                                localBtn.innerText = "Connect (Local) ⚡";
+                                localBtn.onclick = () => window.open(data.url, '_blank');
+                                btn.parentNode.insertBefore(localBtn, btn.nextSibling);
+                            }
+                        } catch (e) { console.error("Failed to resolve local url", e); }
+                    }, 1500); // Wait 1.5s for Docker to map ports
+                }
             }
 
             backBtn.innerText = "Done";
