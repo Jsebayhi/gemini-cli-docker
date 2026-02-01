@@ -231,7 +231,26 @@ async function goToConfig() {
         select.appendChild(opt);
     });
     document.getElementById('config-details').innerText = "";
+    
+    // Setup Session Type Toggle
+    const typeSelect = document.getElementById('session-type-select');
+    typeSelect.onchange = toggleTaskInput;
+    toggleTaskInput(); // Init state
+    
     showStep('step-config');
+}
+
+function toggleTaskInput() {
+    const type = document.getElementById('session-type-select').value;
+    const taskContainer = document.getElementById('task-input').parentElement; // The div wrapping the textarea
+    const taskInput = document.getElementById('task-input');
+    
+    if (type === 'bash') {
+        taskContainer.style.display = 'none';
+        taskInput.value = ""; // Clear value to avoid sending it
+    } else {
+        taskContainer.style.display = 'block';
+    }
 }
 
 async function loadConfigDetails() {
