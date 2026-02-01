@@ -4,11 +4,15 @@
 Accepted
 
 ## Context
-Remote sessions (via Tailscale VPN) provide excellent mobility but introduce two friction points when working directly on the host machine:
-1.  **Latency:** Traffic between a local browser and a local container is routed through the VPN tunnel (tun device), introducing unnecessary overhead.
-2.  **Connectivity:** If the Tailscale daemon on the host is toggled off, the user cannot access the containerized web app, even though it is running locally.
+Remote sessions (via Tailscale VPN) provide excellent mobility but introduce a critical dependency: **The user must be connected to the VPN to access a container running on their own machine.**
 
-The goal is to allow "Hybrid Access": VPN for remote devices (phones/tablets) and high-speed Localhost access for the desktop.
+This creates significant friction:
+1.  **Dependency:** If the host's Tailscale daemon is stopped, paused, or misconfigured, the user is locked out of their local session.
+2.  **Overhead:** Routing local traffic through a VPN tunnel (tun device) introduces unnecessary overhead and complexity for a "localhost" scenario.
+
+The goal is to allow **Hybrid Access**:
+*   **Localhost:** Direct, zero-dependency access when on the host machine.
+*   **VPN:** Secure remote access when on mobile/remote devices.
 
 ## Decision
 We will implement an automated port-mapping and discovery mechanism called **Hybrid Mode**.
