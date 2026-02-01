@@ -287,6 +287,10 @@ function openWizard() {
 }
 
 function closeWizard() {
+    document.getElementById('wizard').classList.remove('active');
+}
+
+async function loadConfigDetails() {
     const config = document.getElementById('config-select').value;
     const detailsDiv = document.getElementById('config-details');
     if (!config) {
