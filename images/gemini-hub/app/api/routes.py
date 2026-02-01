@@ -48,12 +48,13 @@ def launch():
     project_path = data.get('project_path')
     config_profile = data.get('config_profile')
     session_type = data.get('session_type', 'cli')
+    task = data.get('task')
     
     if not project_path:
         return jsonify({"error": "Project path required"}), 400
         
     try:
-        result = LauncherService.launch(project_path, config_profile, session_type)
+        result = LauncherService.launch(project_path, config_profile, session_type, task)
         if result["returncode"] == 0:
             result["status"] = "success"
             return jsonify(result)

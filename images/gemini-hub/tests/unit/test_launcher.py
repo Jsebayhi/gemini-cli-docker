@@ -21,3 +21,20 @@ def test_launch_exception():
         
         assert result["returncode"] == -1
         assert "Exec failed" in result["stderr"]
+
+def test_launch_success_with_task():
+    """Test successful launch with an autonomous task."""
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "OK"
+        mock_run.return_value.stderr = ""
+        
+        with patch("app.config.Config.HUB_ROOTS", ["/mock/root"]):
+            result = LauncherService.launch("/mock/root/project", task="Hello Bot")
+            
+            assert result["returncode"] == 0
+            args, _ = mock_run.call_args
+            cmd = args[0]
+            # Verify task is passed after --
+            assert cmd[-3:] == ["--", "chat", "Hello Bot"]
+
