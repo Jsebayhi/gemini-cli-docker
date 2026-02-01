@@ -242,18 +242,51 @@ async function goToConfig() {
 
 function toggleTaskInput() {
     const type = document.getElementById('session-type-select').value;
-    const taskContainer = document.getElementById('task-input').parentElement; // The div wrapping the textarea
+    const taskContainer = document.getElementById('task-input').parentElement.parentElement; // The div wrapping label+checkbox and textarea
     const taskInput = document.getElementById('task-input');
     
+    // Note: In updated HTML, task-input is inside a div, and that div is inside the main container div
+    // Logic: The structure is <div> <div>Label+Check</div> <textarea> ... </div>
+    // So parentElement of textarea is the container.
+    
     if (type === 'bash') {
-        taskContainer.style.display = 'none';
-        taskInput.value = ""; // Clear value to avoid sending it
+        taskInput.parentElement.style.display = 'none';
+        taskInput.value = ""; 
     } else {
-        taskContainer.style.display = 'block';
+        taskInput.parentElement.style.display = 'block';
+    }
+    validateInteractive();
+}
+
+function validateInteractive() {
+    const task = document.getElementById('task-input').value.trim();
+    const check = document.getElementById('interactive-check');
+    
+    if (!task) {
+        // No task? Must be interactive.
+        check.checked = true;
+        check.disabled = true;
+        check.parentElement.title = "Interactive mode is required when no task is provided";
+        check.parentElement.style.opacity = "0.6";
+    } else {
+        // Has task? User choice.
+        check.disabled = false;
+        check.parentElement.title = "";
+        check.parentElement.style.opacity = "1";
     }
 }
 
-async function loadConfigDetails() {
+function openWizard() {
+    document.getElementById('wizard').classList.add('active');
+    const taskInput = document.getElementById('task-input');
+    if (taskInput) {
+        taskInput.value = "";
+        validateInteractive();
+    }
+    fetchRoots();
+}
+
+function closeWizard() {
     const config = document.getElementById('config-select').value;
     const detailsDiv = document.getElementById('config-details');
     if (!config) {
@@ -285,6 +318,7 @@ async function doLaunch() {
     const config = document.getElementById('config-select').value;
     const sessionType = document.getElementById('session-type-select').value;
     const task = document.getElementById('task-input').value;
+    const interactive = document.getElementById('interactive-check').checked;
     const results = document.getElementById('launch-results');
     const status = document.getElementById('launch-status');
     const cmdSpan = document.getElementById('launch-cmd');
@@ -303,7 +337,8 @@ async function doLaunch() {
                 project_path: currentPath,
                 config_profile: config,
                 session_type: sessionType,
-                task: task
+                task: task,
+                interactive: interactive
             })
         });
         const result = await res.json();

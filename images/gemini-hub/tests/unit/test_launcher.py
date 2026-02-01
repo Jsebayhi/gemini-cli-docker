@@ -23,7 +23,7 @@ def test_launch_exception():
         assert "Exec failed" in result["stderr"]
 
 def test_launch_success_with_task():
-    """Test successful launch with an autonomous task."""
+    """Test successful launch with an autonomous task (interactive default)."""
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = "OK"
@@ -35,6 +35,22 @@ def test_launch_success_with_task():
             assert result["returncode"] == 0
             args, _ = mock_run.call_args
             cmd = args[0]
-            # Verify task is passed after --
+            # Verify task is passed with -i by default
+            assert cmd[-3:] == ["--", "-i", "Hello Bot"]
+
+def test_launch_success_with_task_non_interactive():
+    """Test successful launch with a non-interactive task."""
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "OK"
+        mock_run.return_value.stderr = ""
+        
+        with patch("app.config.Config.HUB_ROOTS", ["/mock/root"]):
+            result = LauncherService.launch("/mock/root/project", task="Hello Bot", interactive=False)
+            
+            assert result["returncode"] == 0
+            args, _ = mock_run.call_args
+            cmd = args[0]
+            # Verify task is passed without -i
             assert cmd[-2:] == ["--", "Hello Bot"]
 
