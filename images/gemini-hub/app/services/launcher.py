@@ -10,7 +10,7 @@ class LauncherService:
     """Manages the execution of gemini-toolbox sessions."""
 
     @staticmethod
-    def launch(project_path: str, config_profile: str = None, session_type: str = 'cli') -> Dict[str, str]:
+    def launch(project_path: str, config_profile: str = None, session_type: str = 'cli', task: str = None, interactive: bool = True) -> Dict[str, str]:
         """Launches gemini-toolbox via subprocess."""
         
         # Security Check
@@ -39,6 +39,14 @@ class LauncherService:
         # Command Construction
         # We pass --remote without the key value since it's in env
         cmd = ["gemini-toolbox", "--remote", "--detached"] + config_args
+        
+        if task:
+            # Autonomous mode logic
+            if interactive:
+                 cmd.extend(["--", "-i", task])
+            else:
+                 cmd.extend(["--", task])
+
         cmd_str = ' '.join(cmd)
         
         logger.info(f"Executing: {cmd_str} in {project_path}")

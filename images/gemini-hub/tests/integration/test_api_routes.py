@@ -114,6 +114,29 @@ def test_launch_success(client):
         assert "--profile" in cmd # Config profile
         assert "GEMINI_REMOTE_KEY" in kwargs["env"] # Auth key passed
 
+def test_launch_with_task_api(client):
+    """Test API launch with an autonomous task."""
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "Bot started"
+        mock_run.return_value.stderr = ""
+
+        payload = {
+            "project_path": "/mock/root/project",
+            "task": "do something autonomous"
+        }
+        
+        response = client.post('/api/launch', json=payload)
+        
+        assert response.status_code == 200
+        assert response.json["status"] == "success"
+        
+        # Verify call args
+        args, _ = mock_run.call_args
+        cmd = args[0]
+        assert "--" in cmd
+        assert "do something autonomous" in cmd
+
 def test_launch_failure_permission(client):
     """Test launch rejection for unauthorized path."""
     payload = {"project_path": "/unauthorized/path"}
