@@ -31,6 +31,19 @@ cd gemini-cli-toolbox
 ln -s $(pwd)/bin/gemini-toolbox ~/.local/bin/gemini-toolbox
 ```
 
+### 🐚 Bash Completion (Optional)
+Enable autocompletion for flags, paths, and running containers:
+
+```bash
+# Source the script in your current session
+source completions/gemini-toolbox.bash
+source completions/gemini-hub.bash
+
+# Or add to your ~/.bashrc for persistence (recommended)
+echo "source $(pwd)/completions/gemini-toolbox.bash" >> ~/.bashrc
+echo "source $(pwd)/completions/gemini-hub.bash" >> ~/.bashrc
+```
+
 ### 2. Run
 ```bash
 # Start an interactive chat
