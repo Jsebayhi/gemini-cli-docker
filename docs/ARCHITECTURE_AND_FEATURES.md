@@ -10,7 +10,7 @@ This document provides a technical breakdown of how the Gemini CLI Toolbox works
 The core philosophy of this toolbox is **Host Protection**. By running the agent in a container, we ensure:
 *   **File System:** The agent sees *only* the project directory you explicitly mounted (`--project` or default `$PWD`). It cannot access `~/.ssh`, `/etc`, or other projects.
 *   **Process Isolation:** If the agent runs `rm -rf /`, it destroys the container's filesystem, not yours.
-*   **Network (Local):** By default, the container shares the host network stack (`--net=host`) for convenience, but you can isolate it using `--remote` (which switches to bridge mode + Tailscale).
+*   **Network (Local):** The container shares the host network stack (`--net=host`). This is **required** to support the Google OAuth browser flow (which spins up a local server on varying ports to capture your login token). Strict network isolation (bridge mode) is currently only enabled when using `--remote`.
 
 ### Permission Management (`gosu`)
 *   **The Problem:** Docker containers typically run as root. If the agent creates a file, it ends up owned by `root` on your host, requiring `sudo` to delete.
