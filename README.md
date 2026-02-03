@@ -48,7 +48,7 @@ gemini-toolbox
 
 ---
 
-## 🏗️ How it Works (The 20-Minute Deep Dive)
+## 🏗️ Core Concepts
 
 The Toolbox isn't just a wrapper; it's a bridge between your host and a secure execution environment.
 
@@ -65,6 +65,8 @@ The Toolbox isn't just a wrapper; it's a bridge between your host and a secure e
 *   **Tailscale VPN:** Start a session with `--remote` to access it from your phone, tablet, or another PC via a secure mesh network.
 *   **The Hub:** A built-in web dashboard (`http://gemini-hub:8888`) to discover and manage multiple active sessions from any device connected to the VPN.
 
+📖 **[Read the full Architecture & Features Deep Dive](docs/ARCHITECTURE_AND_FEATURES.md)** for technical details on DooD, IDE mirroring, and VPN logic.
+
 ---
 
 ## 📚 Learning Path
@@ -73,7 +75,8 @@ Want to go deeper? Follow these guides to master the Toolbox:
 
 1.  **[User Journeys](docs/user_path.md) (5 min):** See how components work together in real-world scenarios (Remote troubleshooting, Background bots, Security auditing).
 2.  **[Use Case Catalog](docs/USE_CASES.md) (15 min):** A detailed breakdown of features for different personas (DevOps, SRE, Polyglot developers).
-3.  **[Architecture Decisions (ADRs)](adr/) (20+ min):** Understand the "Why" behind the "How".
+3.  **[Architecture & Features](docs/ARCHITECTURE_AND_FEATURES.md) (20 min):** Deep dive into the internal mechanics (DooD, IDE protocols, networking).
+4.  **[Architecture Decisions (ADRs)](adr/) (Reference):** Historical record of design choices.
 
 ---
 

@@ -1,0 +1,88 @@
+# 🏗️ Architecture & Features Deep Dive
+
+This document provides a technical breakdown of how the Gemini CLI Toolbox works under the hood. It is intended for power users, security-conscious developers, and contributors.
+
+---
+
+## 🛡️ 1. Security & Isolation
+
+### The "Sandbox" Promise
+The core philosophy of this toolbox is **Host Protection**. By running the agent in a container, we ensure:
+*   **File System:** The agent sees *only* the project directory you explicitly mounted (`--project` or default `$PWD`). It cannot access `~/.ssh`, `/etc`, or other projects.
+*   **Process Isolation:** If the agent runs `rm -rf /`, it destroys the container's filesystem, not yours.
+*   **Network (Local):** By default, the container shares the host network stack (`--net=host`) for convenience, but you can isolate it using `--remote` (which switches to bridge mode + Tailscale).
+
+### Permission Management (`gosu`)
+*   **The Problem:** Docker containers typically run as root. If the agent creates a file, it ends up owned by `root` on your host, requiring `sudo` to delete.
+*   **The Solution:** The entrypoint script (`docker-entrypoint.sh`) reads your host UID/GID (passed via env vars). It uses `gosu` to drop privileges to your user level *inside* the container before executing any command.
+*   **Result:** Files created by Gemini are owned by **you**.
+
+---
+
+## 💻 2. IDE Integration (VS Code)
+
+### The "Companion" Protocol
+The [Gemini CLI Companion](https://github.com/google/gemini-cli) extension for VS Code normally expects the CLI to run locally. We trick it into working with Docker.
+
+1.  **Environment Variables:** The toolbox script detects if it's running inside VS Code (`TERM_PROGRAM=vscode`).
+2.  **Passthrough:** It captures the extension's connection details:
+    *   `GEMINI_CLI_IDE_SERVER_PORT`
+    *   `GEMINI_CLI_IDE_AUTH_TOKEN`
+3.  **Networking Patch:** It forces the CLI to connect to `127.0.0.1` (the host) instead of `localhost` (the container) by overriding `GEMINI_CLI_IDE_SERVER_HOST`. This works because we use `--net=host`.
+
+### Path Mirroring
+For the extension to apply diffs, the file paths inside the container must match the file paths in VS Code.
+*   **Solution:** We don't mount to `/app`. We mount the project to its **exact absolute path** (e.g., `/home/user/projects/my-app` maps to `/home/user/projects/my-app` inside the container).
+
+---
+
+## 🐳 3. Docker-out-of-Docker (DooD)
+
+### Shared Daemon
+Instead of running "Docker in Docker" (which is slow and insecure), we mount the host's Docker socket (`/var/run/docker.sock`) into the container.
+
+### Capabilities
+The agent can:
+*   `docker ps`: See containers running on your host.
+*   `docker build`: Build images using your host's engine.
+*   `docker run`: Launch *sibling* containers (not child containers).
+
+### ⚠️ Important Limitations
+Because the agent controls the *Host* daemon, **Volume Mounts** are tricky.
+*   **Context:** When the agent runs `docker run -v ./data:/data`, the Host Daemon resolves `./data`.
+*   **Success:** Since we mirror the project path (see above), `./` inside the container resolves to the same absolute path on the host.
+*   **Failure:** If the agent tries `docker run -v /tmp/container-path:/data`, it will fail because `/tmp/container-path` doesn't exist on the host.
+
+---
+
+## 📱 4. Remote Access & VPN
+
+### Tailscale Integration
+When you use `--remote [key]`, the toolbox architecture changes:
+1.  **Network Isolation:** It switches from `--net=host` to `--net=bridge`.
+2.  **Userspace Networking:** It starts `tailscaled` inside the container in userspace mode (`--tun=userspace-networking`).
+3.  **Registration:** It registers a transient node on your Tailnet named `gem-{project}-{type}-{id}`.
+
+### The Gemini Hub
+The Hub is a standalone container (`gemini-hub-service`) that acts as a discovery server.
+*   **Discovery:** It queries the local Tailscale socket to find peers starting with `gem-`.
+*   **Proxy:** It provides a Web UI to launch `ttyd` (Web Terminal) sessions connecting to those peers.
+*   **Smart Restart:** If you launch a session in a new folder, the Hub container (which has specific volume mounts) might not see it. The script detects this and performs a "Smart Restart" to update the Hub's mounted volumes dynamically.
+
+---
+
+## 📦 5. Caching & Persistence
+
+To make the ephemeral container practical, we selectively persist critical data.
+
+### Build Caches
+We mount standard cache directories from your host to speed up builds:
+*   `~/.m2` (Maven)
+*   `~/.gradle` (Gradle)
+*   `~/.npm` (Node)
+*   `~/.cache/pip` (Python)
+*   `~/go/pkg` (Go)
+
+### Configuration Profiles
+User history and login cookies are stored in `~/.gemini` (mounted to `/home/gemini/.gemini`).
+*   **Isolation:** By changing the `--config` path, you completely swap the agent's memory/context.
