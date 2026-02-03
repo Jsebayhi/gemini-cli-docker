@@ -38,8 +38,16 @@ For the extension to apply diffs, the file paths inside the container must match
 
 ## 🐳 3. Docker-out-of-Docker (DooD)
 
-### Shared Daemon
-Instead of running "Docker in Docker" (which is slow and insecure), we mount the host's Docker socket (`/var/run/docker.sock`) into the container.
+### Shared Daemon & The Caching Trade-off
+The toolbox uses "Docker-out-of-Docker" (DooD) by mounting the host's Docker socket (`/var/run/docker.sock`) into the container. This architectural choice is driven by **resource efficiency**.
+
+**The Primary Goal: Shared Image Cache**
+Without this, each concurrent session would be isolated, forcing you to re-download the same base images (e.g., `node`, `python`, `rust`) multiple times. By sharing the host's socket, images pulled in one session are immediately available to all others and your host, saving significant bandwidth and disk space.
+
+**The Trade-off: Reduced Isolation**
+Ideally, the agent would be fully sandboxed from your host's Docker state. However, because we share the socket to achieve caching, the agent effectively gains the ability to see and manage containers running on your host.
+
+If your use case requires a **full sandbox** where the agent is strictly forbidden from interacting with the host's Docker daemon, you should use the `--no-docker` flag.
 
 ### Capabilities
 The agent can:
