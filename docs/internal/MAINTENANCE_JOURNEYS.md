@@ -144,3 +144,27 @@ This document tracks the full end-to-end user journeys for regression testing. U
     *   Add `--volume /tmp/data:/data` to a profile's `extra-args`.
     *   Run with that profile.
     *   **Verify:** `/data` exists inside the container.
+
+## 💻 Journey 12: The IDE Companion (VS Code)
+**Goal:** Verify the container correctly connects to the host's IDE extension.
+
+1.  **Integrated Terminal:**
+    *   Open VS Code. Open Integrated Terminal.
+    *   Run `gemini-toolbox`.
+    *   **Verify:** The startup log should NOT show "VS Code Integration is disabled" (unless explicitly disabled).
+    *   **Verify:** `env | grep TERM_PROGRAM` output includes `vscode`.
+2.  **Context Check (Manual):**
+    *   (Requires extension installed) Ask Gemini: "What file is currently open?".
+    *   **Verify:** It correctly identifies the active editor file.
+
+## 📝 Journey 13: The Remote Editor (Vim)
+**Goal:** Verify text editing capabilities in a remote web terminal.
+
+1.  **Launch Remote Bash:**
+    *   Open Hub on Mobile/Remote device.
+    *   Launch a **Bash** session.
+2.  **Edit File:**
+    *   Run `vim test_edit.txt`.
+    *   Make changes and save (`:wq`).
+    *   **Verify:** `cat test_edit.txt` shows changes.
+    *   **Verify:** Latency/Rendering is usable (uses `ttyd`).
