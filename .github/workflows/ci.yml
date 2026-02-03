@@ -135,13 +135,7 @@ jobs:
 
       - name: Prepare Docker Hub README
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          cp README.md README_DOCKER.md
-          # Replace relative links with absolute GitHub links for Docker Hub rendering
-          sed -i 's|(docs/|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/docs/|g' README_DOCKER.md
-          sed -i 's|(adr/|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/adr/|g' README_DOCKER.md
-          # Also handle the CONTRIBUTING link
-          sed -i 's|(docs/CONTRIBUTING.md)|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/docs/CONTRIBUTING.md)|g' README_DOCKER.md
+        run: make docker-readme
 
       - name: Update Docker Hub Description (New Repo)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
