@@ -1,46 +1,88 @@
 # 🛠️ Internal Maintenance Journeys (QA Matrix)
 
-This document tracks the supported user paths and variants. It serves as a checklist for regression testing.
+This document tracks all supported user paths and variants to ensure no regressions during updates.
 
 ## 🧪 Test Matrix
 
-### 1. Core Entry Points (The Journeys)
-These represent the fundamental ways a user starts a session. Every update must pass these.
+### J1: Local Default
+1. Run `gemini-toolbox`.
+2. Verify interactive Gemini CLI opens in the current folder.
+3. Verify state is saved in `~/.gemini`.
 
-| ID | Journey | Command | Expected Result |
-|:---|:---|:---|:---|
-| **J1** | **Local Default** | `gemini-toolbox` | Interactive CLI in current folder. Uses `~/.gemini`. |
-| **J2** | **Local Profile** | `gemini-toolbox --profile /tmp/prof` | Interactive CLI. Uses `/tmp/prof/.gemini`. |
-| **J3** | **Remote Default** | `gemini-toolbox --remote` | CLI starts. Hub starts. Accessible via VPN. |
-| **J4** | **Remote Profile** | `gemini-toolbox --remote --profile /tmp/prof` | Remote CLI using isolated profile storage. |
-| **J5** | **Hub Launch** | Hub UI > New Session > Launch | New container starts from Web UI. |
+### J2: Local Profile
+1. Run `gemini-toolbox --profile /tmp/prof`.
+2. Verify state is saved in `/tmp/prof/.gemini` (nested).
 
-### 2. Feature Modifiers (The Flags)
-These flags can technically apply to most Journeys. Verify they trigger the correct internal logic.
+### J3: Remote Default
+1. Run `gemini-toolbox --remote`.
+2. Verify Hub starts and is accessible via `http://localhost:8888`.
+3. Verify session is accessible via Tailscale IP.
 
-| ID | Modifier | Flag | Validation Check |
-|:---|:---|:---|:---|
-| **M1** | **Strict Sandbox** | `--no-docker` | Run `docker ps` inside container -> Fails (Socket missing). |
-| **M2** | **No IDE** | `--no-ide` | `env | grep TERM_PROGRAM` -> Empty. |
-| **M3** | **Bash Mode** | `--bash` | Entrypoint is `/bin/bash`, not `gemini`. |
-| **M4** | **Preview** | `--preview` | Image tag is `...:latest-preview`. |
-| **M5** | **One-Shot** | `"task"` (Positional) | Agent runs task and exits. |
-| **M6** | **Interactive** | `-i "task"` | Agent runs task and stays open. |
-| **M7** | **Legacy Config** | `--config /tmp/conf` | Mounts directly to `/home/gemini/.gemini` (No nesting). |
+### J4: Remote Profile
+1. Run `gemini-toolbox --remote --profile /tmp/prof`.
+2. Verify remote connectivity using isolated profile storage.
 
-### 3. Session Transitions
-Actions performed on *existing* sessions.
+### J5: Hub Launch
+1. Open Hub UI.
+2. Use "New Session" wizard to launch a container.
+3. Verify new session appears in the list and is connectable.
 
-| ID | Action | Command | Validation |
-|:---|:---|:---|:---|
-| **T1** | **Attach (CLI)** | `gemini-toolbox connect <id>` | Connects to `tmux` session. |
-| **T2** | **Attach (Bash)** | `gemini-toolbox connect <id>` | Connects to `bash` process (or starts new one). |
-| **T3** | **Hub Restart** | Launch J1 in `/dirA`, then J1 in `/dirB`. | Hub detects new root and performs Smart Restart. |
-| **T4** | **Stop Hub** | `gemini-toolbox stop-hub` | `gemini-hub-service` container is removed. |
+### M1: Strict Sandbox
+1. Run `gemini-toolbox --no-docker`.
+2. Verify `docker ps` fails inside the container (socket not mounted).
 
-### 4. Edge Scenarios
-| ID | Scenario | Details |
-|:---|:---|:---|
-| **E1** | **Profile Persistence** | Define `extra-args` in profile root. Launch J2. Verify args are applied. |
-| **E2** | **Hub Bot** | Launch "Autonomous Bot" from Hub UI. Verify M6 behavior remotely. |
-| **E3** | **Hybrid Access** | Access Hub via `localhost:8888`. Verify "Local" routing. |
+### M2: No IDE
+1. Run `gemini-toolbox --no-ide`.
+2. Verify `GEMINI_CLI_IDE_*` environment variables are missing.
+
+### M3: Bash Mode
+1. Run `gemini-toolbox --bash`.
+2. Verify you are dropped into a raw `bash` shell instead of Gemini.
+
+### M4: Preview Channel
+1. Run `gemini-toolbox --preview`.
+2. Verify the Docker image tag used is `...:latest-preview`.
+
+### M5: One-Shot Task
+1. Run `gemini-toolbox "say hello"`.
+2. Verify agent responds and the container exits immediately.
+
+### M6: Interactive Task
+1. Run `gemini-toolbox -i "say hello"`.
+2. Verify agent responds and the session remains open.
+
+### M7: Legacy Config
+1. Run `gemini-toolbox --config /tmp/conf`.
+2. Verify state is saved directly in `/tmp/conf` (no nesting).
+
+### T1: Attach (CLI)
+1. Launch a session.
+2. Run `gemini-toolbox connect <ID>`.
+3. Verify you attach to the existing `tmux` session.
+
+### T2: Attach (Bash)
+1. Launch a bash session.
+2. Run `gemini-toolbox connect <ID>`.
+3. Verify you enter the existing container.
+
+### T3: Hub Smart Restart
+1. Launch a remote session in `/dirA`.
+2. Launch another remote session in `/dirB`.
+3. Verify Hub prompts to "Merge and Restart" to include the new path.
+
+### T4: Stop Hub
+1. Run `gemini-toolbox stop-hub`.
+2. Verify the Hub container is stopped and removed.
+
+### E1: Profile Persistence
+1. Add a flag (e.g., `--no-ide`) to `/tmp/prof/extra-args`.
+2. Run `gemini-toolbox --profile /tmp/prof`.
+3. Verify the flag is automatically applied.
+
+### E2: Hub Bot
+1. Launch an "Autonomous Bot" from the Hub UI.
+2. Verify it executes the task and handles the interactive toggle correctly.
+
+### E3: Hybrid Access (Localhost)
+1. Access Hub via `localhost:8888`.
+2. Verify the primary link uses `localhost` and a "VPN" badge is shown as fallback.
