@@ -63,7 +63,7 @@ The Toolbox isn't just a wrapper; it's a bridge between your host and a secure e
 
 ### 📱 3. Remote & Mobile Freedom
 *   **Tailscale VPN:** Start a session with `--remote` to access it from your phone, tablet, or another PC via a secure mesh network.
-*   **The Hub:** A built-in web dashboard (`http://gemini-hub:8888`) to discover and manage multiple active sessions from any device.
+*   **The Hub:** A built-in web dashboard (`http://gemini-hub:8888`) to discover and manage multiple active sessions from any device connected to the VPN.
 
 ---
 
