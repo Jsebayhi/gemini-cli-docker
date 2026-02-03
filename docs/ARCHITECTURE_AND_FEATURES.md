@@ -83,10 +83,27 @@ When you use `--remote [key]` (or simply `--remote` if the `GEMINI_REMOTE_KEY` e
 3.  **Registration:** It registers a transient node on your Tailnet using the **Session ID** (see Section 2) as its hostname.
 
 ### The Gemini Hub
-The Hub is a standalone container (`gemini-hub-service`) that acts as a discovery server.
-*   **Discovery:** It queries the local Tailscale socket to find peers starting with `gem-`.
-*   **Proxy:** It provides a Web UI to launch `ttyd` (Web Terminal) sessions connecting to those peers.
-*   **Smart Restart:** If you launch a session in a new folder, the Hub container (which has specific volume mounts) might not see it. The script detects this and performs a "Smart Restart" to update the Hub's mounted volumes dynamically.
+The Hub is a standalone container (`gemini-hub-service`) that acts as a discovery server and remote manager. While it usually auto-starts with `--remote`, you can also run it manually as a central dashboard.
+
+#### 1. Discovery & Connection
+*   **Mesh Discovery:** It queries the local Tailscale socket to find any active `gem-` peers on your network.
+*   **Web Proxy:** It provides a Web UI to launch `ttyd` (Web Terminal) sessions connecting to those peers.
+
+#### 2. Remote Session Management
+The Hub is not just a passive list; it is an active **Remote Job Runner**.
+*   **Launch Wizard:** From the Hub UI, you can start *new* sessions (CLI or Bash) in any workspace it has access to.
+*   **Autonomous Bots:** You can dispatch autonomous tasks (e.g., "Refactor this module") directly from the dashboard without opening a terminal.
+
+#### 3. Standalone Usage
+You can run the Hub manually to manage your environment:
+```bash
+# Start Hub, scanning specific projects and profiles
+gemini-hub \
+  --workspace ~/projects/work \
+  --workspace ~/projects/personal \
+  --config-root ~/.gemini-profiles
+```
+*   **Smart Restart:** If you launch a session in a new folder not currently scanned by the Hub, the toolbox detects this and triggers a "Smart Restart" of the Hub to dynamically mount the new workspace.
 
 ---
 
