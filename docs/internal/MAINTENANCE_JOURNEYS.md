@@ -76,3 +76,37 @@ This document tracks the full end-to-end user journeys for regression testing. U
 3.  **Check Visibility:**
     *   Refresh the Hub UI.
     *   **Verify:** Both `/folderA` and `/folderB` are available in the "New Session" wizard.
+
+## 🐚 Journey 6: The Scripter (Bash & Pipes)
+**Goal:** Verify non-interactive plumbing and scripting capabilities.
+
+1.  **Bash One-Liner:**
+    *   Run `gemini-toolbox --bash -c "echo 'Inside Docker' && ls -la"`.
+    *   **Verify:** Output shows container file list and exits immediately.
+2.  **Piping Content:**
+    *   Run `echo "System Error 500" | gemini-toolbox "Explain this error"`.
+    *   **Verify:** Agent receives the piped input and responds contextually.
+
+## 🏚️ Journey 7: The Legacy User (Standard Config)
+**Goal:** Verify backward compatibility with the simple `--config` flag.
+
+1.  **Launch Legacy:**
+    *   Run `gemini-toolbox --config /tmp/legacy-conf`.
+    *   **Verify:** State files (history, cookies) are created *directly* in `/tmp/legacy-conf` (no nested `.gemini` folder).
+2.  **Verify Persistence:**
+    *   Restart the session.
+    *   **Verify:** History is restored from that directory.
+
+## 🔌 Journey 8: The Power User (Manual Connections)
+**Goal:** Verify manual session management and attaching.
+
+1.  **Launch Detached Bash:**
+    *   Run `gemini-toolbox --bash --detached`.
+    *   Note the Session ID (`gem-project-bash-xxxx`).
+2.  **Connect Manual:**
+    *   Run `gemini-toolbox connect <session-id>`.
+    *   **Verify:** You are dropped into the `bash` shell of the running container.
+3.  **Cross-Mode Connect:**
+    *   Launch a standard CLI session detached.
+    *   Run `gemini-toolbox --bash connect <cli-session-id>`.
+    *   **Verify:** You get a `bash` shell inside the *CLI* container (inspecting the agent's environment).
