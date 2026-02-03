@@ -39,6 +39,15 @@ make build
 *   **Rule:** When working on a specific tool, **load its specific `GEMINI.md`**.
 *   **Why:** The root context is generic; the component context contains the critical "gotchas" for that specific image.
 
+### CLI Flags & Autocompletion
+*   **Rule:** If you add, remove, or modify CLI flags in `bin/gemini-toolbox` or `bin/gemini-hub`, you **MUST** immediately update the corresponding script in `completions/`.
+*   **Why:** Stale completion scripts frustrate users.
+
+### Pull Request Protocol
+*   **Rule:** Do **NOT** merge Pull Requests unless explicitly instructed by the user.
+*   **Process:** Create branch -> Implement -> Push -> Open PR -> **STOP**.
+*   **Why:** The user often wants to review the PR diff before merging.
+
 ## 5. Naming Strategy
 
 ### Consistency Mandate
@@ -71,6 +80,26 @@ Discovery tools (like `gemini-hub`) rely on this structure.
 *   **Customization:** A profile can define persistent runtime arguments (volumes, flags) by placing a file named `extra-args` in its root. See [ADR-0021](adr/0021-configuration-profiles-and-extra-args.md).
 
 ## 7. Known Peculiarities & Gotchas
+
+*   **Docker-out-of-Docker:** The agent controls the **Host** daemon. Paths mounted must be absolute and exist on the host. `localhost` inside the container refers to the container, not the host (unless `--net=host` is used).
+*   **Terminal Colors:** We explicitly pass `COLORTERM` and `TERM` env vars to ensure TrueColor support in remote sessions.
+
+## 8. Documentation Architecture
+
+### File Roles & Expectations
+
+| File | Audience | Purpose & Tone |
+| :--- | :--- | :--- |
+| `README.md` | **Everyone** | **The Hook.** Quick start (5 min), Feature Highlights. <br> *Rule:* Must be concise, scannable, and inspiring. Use absolute links carefully or rely on the CI transformation. |
+| `docs/USER_GUIDE.md` | **Users** | **The Cookbook.** Story-driven scenarios. <br> *Rule:* Focus on "The Scenario" (Problem) and "The Solution". Avoid "QA-style" step-by-step validation. Use natural language. |
+| `docs/ARCHITECTURE_AND_FEATURES.md` | **Power Users** | **The Engine Room.** Deep technical explanation. <br> *Rule:* Explain *how* it works (DooD, IDE protocols, networking). Be accurate about trade-offs. |
+| `docs/internal/MAINTENANCE_JOURNEYS.md` | **Maintainers** | **The QA Matrix.** Exhaustive checklist of edge cases. <br> *Rule:* Keep it comprehensive. Structure by functional area. **Not for end-users.** |
+| `adr/` | **Architects** | **The History.** Decision records. <br> *Rule:* Explain *why* we built it this way. |
+
+### Docker Hub Publishing
+*   **Mechanism:** The `README.md` is the source of truth for both GitHub and Docker Hub.
+*   **Transformation:** Docker Hub does not support relative links (e.g., `docs/foo.md`). The CI pipeline (via `make docker-readme`) dynamically generates a temporary `README_DOCKER.md`, replacing all relative links with absolute GitHub URLs before publishing.
+*   **Rule:** When writing `README.md`, use relative links for better GitHub navigation. Trust the CI to fix them for Docker Hub.
 --- End of Context from: GEMINI.md ---
 
 

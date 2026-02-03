@@ -84,6 +84,7 @@ Each profile has its own isolated history, cookies, and configuration. Switching
 
 ---
 
+
 ## 8. Instant Log Analysis
 **The Scenario:** You are staring at a massive, cryptic error log on a server and need immediate insight.
 
