@@ -19,7 +19,20 @@ The core philosophy of this toolbox is **Host Protection**. By running the agent
 
 ---
 
-## 💻 2. IDE Integration (VS Code)
+## 🆔 2. Session Identity & Naming
+
+Every time you run the toolbox, it generates a unique **Session ID** based on the following pattern:
+`gem-{PROJECT_NAME}-{TYPE}-{UNIQUE_SUFFIX}`
+
+### Consistency by Design
+This ID is not just a label; it is the source of truth for session identity:
+*   **Docker Container Name:** Every container is explicitly named after its Session ID. This allows commands like `gemini-toolbox connect <id>` to work reliably.
+*   **Tailscale Hostname:** When running in remote mode, this same ID is used as the node's hostname on the VPN.
+*   **Consistency:** The 1:1 mapping between the container name and the network identity ensures that discovery tools (like the Hub) can always resolve and connect to the correct instance.
+
+---
+
+## 💻 3. IDE Integration (VS Code)
 
 ### The "Companion" Protocol
 The [Gemini CLI Companion](https://github.com/google/gemini-cli) extension for VS Code normally expects the CLI to run locally. We trick it into working with Docker.
@@ -61,13 +74,13 @@ Because the agent controls the *Host* daemon, **Volume Mounts** are tricky.
 
 ---
 
-## 📱 4. Remote Access & VPN
+## 📱 5. Remote Access & VPN
 
 ### Tailscale Integration
-When you use `--remote [key]`, the toolbox architecture changes:
+When you use `--remote [key]` (or simply `--remote` if the `GEMINI_REMOTE_KEY` environment variable is set), the toolbox architecture changes:
 1.  **Network Isolation:** It switches from `--net=host` to `--net=bridge`.
 2.  **Userspace Networking:** It starts `tailscaled` inside the container in userspace mode (`--tun=userspace-networking`).
-3.  **Registration:** It registers a transient node on your Tailnet named `gem-{project}-{type}-{id}`.
+3.  **Registration:** It registers a transient node on your Tailnet using the **Session ID** (see Section 2) as its hostname.
 
 ### The Gemini Hub
 The Hub is a standalone container (`gemini-hub-service`) that acts as a discovery server.
