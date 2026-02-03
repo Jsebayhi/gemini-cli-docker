@@ -133,6 +133,10 @@ jobs:
           docker tag gemini-cli-toolbox/hub:latest $REPO:latest-hub
           docker push $REPO:latest-hub
 
+      - name: Prepare Docker Hub README
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: make docker-readme
+
       - name: Update Docker Hub Description (New Repo)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peter-evans/dockerhub-description@v4
@@ -142,4 +146,4 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
           repository: ${{ secrets.DOCKER_HUB_USER }}/gemini-cli-toolbox
           short-description: "Gemini CLI sandbox: Multi-Profile, Remote Access, Docker, VS Code Companion."
-          readme-filepath: ./README.md
+          readme-filepath: ./README_DOCKER.md

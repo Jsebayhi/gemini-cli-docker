@@ -1,0 +1,106 @@
+# 🗺️ Gemini CLI Toolbox: User Guide
+
+Welcome to the Gemini CLI Toolbox. This guide explores the diverse ways you can use this tool to enhance your workflow, from daily coding assistance to managing infrastructure and working remotely.
+
+---
+
+## 1. Seamless VS Code Integration
+**The Scenario:** You are deep in a complex refactor. You need AI help, but you don't want to constantly copy-paste code into a web browser, and you certainly don't want to clutter your host machine with CLI dependencies.
+
+**The Solution:** Run the toolbox directly inside VS Code's integrated terminal.
+```bash
+gemini-toolbox
+```
+It automatically detects your environment and connects to the **Gemini CLI Companion** extension. You can simply say *"Refactor the selected code to use async/await"* or *"Explain this file"*. The agent sees exactly what you see and can even apply diffs directly to your files.
+
+---
+
+## 2. Coding from Anywhere (Remote Access)
+**The Scenario:** A production issue hits while you're away from your desk. You only have your phone or tablet, but you need full terminal access to your dev machine to fix it.
+
+**The Solution:** Leave your session running in "Remote Mode" on your desktop.
+```bash
+gemini-toolbox --remote
+```
+Then, connect from anywhere using the **Gemini Hub** (`http://gemini-hub:8888`) over your Tailscale VPN. You get a full, responsive terminal on your mobile device, allowing you to debug, run commands, or even edit files with `vim` just as if you were sitting at your keyboard.
+
+---
+
+## 3. Autonomous Assistants (Bots)
+**The Scenario:** You have a tedious, long-running task—like finding all "TODO" comments in a legacy codebase and summarizing them in a report—that distracts you from your main work.
+
+**The Solution:** Delegate it. Open the **Gemini Hub**, click **New Session**, and enter your task:
+> *"Scan the codebase for TODOs and create a prioritized report in docs/TECHNICAL_DEBT.md"*
+
+Uncheck "Interactive" and click Launch. The toolbox spins up a dedicated container to handle this chore in the background, freeing you to focus on feature work.
+
+---
+
+## 4. The Universal Builder (No SDKs Required)
+**The Scenario:** You need to build or test a project in a language you don't use often (e.g., Rust, Go, Python) and you don't want to install the entire toolchain on your host.
+
+**The Solution:** Let the agent use Docker.
+```bash
+gemini-toolbox "Run the tests for this Rust project"
+```
+Because the toolbox shares your host's Docker socket, the agent can spin up a temporary `rust` container, mount your code, and run `cargo test`. It uses your host's image cache, so it's instant, but your host OS remains clean of SDK clutter.
+
+---
+
+## 5. Infrastructure as Conversation
+**The Scenario:** You need a Postgres database and a Redis cache to run integration tests, but you don't want to write the `docker-compose.yml` file from scratch.
+
+**The Solution:** Just ask for it.
+```bash
+gemini-toolbox "Spin up a Postgres container and a Redis container for testing"
+```
+The agent understands your infrastructure needs and can directly interact with the Docker daemon to start, stop, and manage services for you.
+
+---
+
+## 6. The Safety Sandbox
+**The Scenario:** You've downloaded a GitHub repository from an unknown source to audit it, but you're worried about running its code or even letting an AI execute parts of it on your machine.
+
+**The Solution:** Lock it down.
+```bash
+gemini-toolbox --no-docker --no-ide
+```
+This launches **Strict Sandbox Mode**. The agent is trapped inside the container with **no access** to your host's Docker daemon or your IDE. It can read and analyze the files in the folder you mounted, but it cannot escape or affect your system configuration.
+
+---
+
+## 7. Context Switching (Profiles)
+**The Scenario:** You work on both personal projects and confidential client work. You need to ensure that your command history, secret keys, and project contexts never mix.
+
+**The Solution:** Use Profiles.
+```bash
+# Morning: Client Work
+gemini-toolbox --profile ~/.gemini-profiles/acme-corp
+
+# Evening: Hobby Project
+gemini-toolbox --profile ~/.gemini-profiles/hobby
+```
+Each profile has its own isolated history, cookies, and configuration. Switching contexts is as simple as changing a flag.
+
+---
+
+
+## 8. Instant Log Analysis
+**The Scenario:** You are staring at a massive, cryptic error log on a server and need immediate insight.
+
+**The Solution:** Pipe it.
+```bash
+cat /var/log/syslog | tail -n 50 | gemini-toolbox "Identify the root cause of these errors"
+```
+The toolbox accepts standard input, making it a powerful addition to your Unix piping workflows.
+
+---
+
+## 9. Automating Git
+**The Scenario:** You've finished a feature but dread writing the detailed commit message or changelog entry.
+
+**The Solution:** Automate the toil.
+```bash
+git diff --staged | gemini-toolbox "Write a semantic commit message for these changes"
+```
+The agent analyzes your actual code changes and generates a precise, professional commit message for you to review.

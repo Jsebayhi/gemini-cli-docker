@@ -12,10 +12,22 @@ help:
 	@echo "  make rebuild       : Force rebuild ALL images (Parallelizable with -j)"
 	@echo "  make scan          : Run security scan (Trivy)"
 	@echo "  make local-ci      : Run mandatory pre-PR checks (Lint & Test)"
+	@echo "  make docker-readme : Generate README_DOCKER.md with absolute links"
 	@echo "  make clean-cache   : Prune npm build cache"
 	@echo ""
 	@echo "Parallel Build Example:"
 	@echo "  make -j4 build"
+
+# --- Documentation ---
+
+.PHONY: docker-readme
+docker-readme:
+	@echo ">> Generating README_DOCKER.md..."
+	cp README.md README_DOCKER.md
+	# Replace relative links with absolute GitHub links
+	sed -i 's|(docs/|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/docs/|g' README_DOCKER.md
+	sed -i 's|(adr/|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/adr/|g' README_DOCKER.md
+	sed -i 's|(docs/CONTRIBUTING.md)|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/docs/CONTRIBUTING.md)|g' README_DOCKER.md
 
 # --- Build Targets (Incremental) ---
 
