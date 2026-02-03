@@ -8,6 +8,18 @@
 
 ---
 
+## 🌟 Why Gemini Toolbox?
+
+*   **🚀 Zero Config:** No Node.js, Python, or SDK setup required on your host. Just run the script.
+*   **🛡️ Secure Sandbox:** The agent is trapped in the container. It cannot access files outside your project folder, guaranteeing no side effects on your OS.
+*   **💻 VS Code Companion:** Native integration with your host IDE for context awareness and auto-diffs.
+*   **🐳 Docker-Powered:** Extends the agent to any language. Build and test projects (Rust, PHP) using your host's Docker images, saving bandwidth and setup time.
+*   **📦 Persistent Caching:** Mounts your host's `~/.m2`, `~/.gradle`, and `~/.npm` caches for instant builds.
+*   **📱 Remote Access:** Code from your phone via Tailscale VPN.
+*   **🔑 Multi-Profile:** Switch seamlessly between personal, work, and bot accounts using different config dirs.
+
+---
+
 ## ⚡ Quick Start (Under 5 Minutes)
 
 ### 1. Install the Wrapper
