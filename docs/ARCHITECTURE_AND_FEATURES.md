@@ -137,10 +137,6 @@ Worktrees are stored in a project-nested cache:
 *   **Sanitization:** Slashes in branch names (e.g., `feat/ui`) are converted to hyphens (`feat-ui`) for the folder name.
 *   **Safety:** The feature only works within a Git repository. If run outside one, it gracefully exits with an error message.
 
-### Isolation Modes
-*   **`disk` Mode (Default):** The worktree is created on your host disk. This is the preferred mode for interactive work as it allows you to `code .` into the worktree or browse files from your host.
-*   **`container` Mode:** The worktree is created inside a Docker volume. This is truly ephemeral and leaves zero footprint on your host disk, but prevents host IDE access.
-
 ### Stateless Cleanup (The Reaper)
 To manage disk space without a database, the Gemini Hub implements a "Stateless Reaper":
 *   **Mechanism:** It scans the worktree cache folders for directory modification times (`mtime`).

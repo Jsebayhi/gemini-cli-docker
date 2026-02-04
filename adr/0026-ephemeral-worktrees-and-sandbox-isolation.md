@@ -24,8 +24,6 @@ The worktree feature is designed to support the following high-level workflows:
 3.  **The Autonomous Task (Non-Interactive):** An agent is launched with a specific instruction. It works in an ephemeral worktree to avoid locking the user's main working directory.
     *   *Command:* `gemini-toolbox --worktree "Refactor auth logic in app/models.py"`
 4.  **The Parallel Multi-Tasker:** A user launches multiple agents on different branches simultaneously. Each lives in its own worktree.
-5.  **The Risky Reviewer:** A user wants to inspect a PR with potential side effects. Using `--isolation container` ensures the worktree remains entirely within a Docker volume.
-    *   *Command:* `gemini-toolbox --worktree fix/vuln --isolation container chat`
 
 ## Proposed Decision: Smart Branching Logic
 
@@ -47,23 +45,16 @@ To prevent clutter and allow for project-level management, worktrees are nested 
 
 *   **Sanitization:** Slashes in branch names (e.g., `feat/ui`) are converted to hyphens (e.g., `feat-ui`) for the folder name to ensure filesystem compatibility and a flat structure within the project subfolder.
 
-## Proposed Decision: Dual-Mode Isolation
+## Proposed Decision: Centralized Worktree Management
 
-We will implement a unified `--worktree` flag that supports two distinct modes:
+We will implement a centralized management strategy for ephemeral worktrees on the host disk:
 
-### 1. `disk` Mode (Default for Interactive Sessions)
-Designed for human developers.
-*   **Location:** Defaults to the nested structure described above. Override via `GEMINI_WORKTREE_ROOT`.
+*   **Location:** Defaults to the nested structure described above. This adheres to Linux standards for cached/transient data. Users can override this by setting `GEMINI_WORKTREE_ROOT`.
 *   The Toolbox automatically mounts this path into the container.
 *   **Cleanup:** The Hub will implement a "Stateless Reaper" protocol.
     *   **Mechanism:** Standard directory timestamp monitoring (`mtime`).
     *   The Hub periodically scans the project-level folders for directories with an `mtime` older than 30 days.
     *   Stale directories are removed, followed by `git worktree prune`.
-
-### 2. `container` Mode (Default for Autonomous Sessions)
-*   **Mechanism:** Worktree created within the container environment (using a dedicated volume).
-*   **Pros:** Truly ephemeral. No host disk clutter.
-*   **Cons:** No local IDE access.
 
 ## Non-Git Project Handling
 
@@ -74,12 +65,12 @@ If the `--worktree` flag is used in a directory that is not part of a Git reposi
 
 ## Trade-offs and Arbitrages
 
-| Feature | `disk` Mode | `container` Mode |
-| :--- | :--- | :--- |
-| **Visibility** | Visible to Host (VS Code) | Hidden (Internal to Docker) |
-| **Cleanup** | Scheduled Reaper (mtime) | Automatic on Container/Vol exit |
-| **Speed** | Fast (Local FS) | Variable (Volume Overhead) |
-| **Risk** | Low (Centralized Root) | Zero (Isolated Vol) |
+| Feature | Decision |
+| :--- | :--- |
+| **Visibility** | Visible to Host (VS Code) for high fidelity |
+| **Cleanup** | Scheduled Reaper (mtime) for statelessness |
+| **Speed** | Fast (Local FS) |
+| **Context** | Git-Centric (Requires a repository) |
 
 ## Remaining Questions / Risks
 *   **Orphaned Worktrees:** If a user deletes the main repository, the worktree entries in the root become "ghosts". The Reaper must be robust enough to handle directory removal even if the parent Git repo is missing.
