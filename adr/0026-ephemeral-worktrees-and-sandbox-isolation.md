@@ -8,7 +8,7 @@ Users and autonomous agents need a way to perform experimental work (refactoring
 
 ### Constraints & Goals
 1.  **Safety:** Experimental work must not corrupt the main repository.
-2.  **Git-Centric:** This feature specifically targets Git-managed projects.
+2.  **Git-Centric:** This feature specifically targets Git-managed projects. The CLI will gracefully exit if run outside a Git worktree.
 3.  **Statelessness:** The Gemini Hub remains stateless, using directory metadata for management.
 4.  **IDE Integration:** Users must be able to open worktrees in their local IDE (e.g., VS Code).
 5.  **Disk Management:** Automated cleanup for stale worktrees based on modification time.
@@ -61,10 +61,16 @@ Designed for human developers.
     *   Stale directories are removed, followed by `git worktree prune`.
 
 ### 2. `container` Mode (Default for Autonomous Sessions)
-Designed for ephemeral, automated tasks.
 *   **Mechanism:** Worktree created within the container environment (using a dedicated volume).
 *   **Pros:** Truly ephemeral. No host disk clutter.
 *   **Cons:** No local IDE access.
+
+## Non-Git Project Handling
+
+If the `--worktree` flag is used in a directory that is not part of a Git repository, the `gemini-toolbox` script will:
+1.  Detect the absence of a `.git` folder (via `git rev-parse`).
+2.  Display a clear error message: `Error: --worktree can only be used within a Git repository.`
+3.  Exit with a non-zero status code without launching the container or creating directories.
 
 ## Trade-offs and Arbitrages
 
