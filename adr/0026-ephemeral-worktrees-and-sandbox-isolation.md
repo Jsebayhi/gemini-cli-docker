@@ -23,7 +23,8 @@ The worktree feature is designed to support the following high-level workflows:
     *   *Command:* `gemini-toolbox --worktree fix/bug-123 chat`
 3.  **The Autonomous Task (Non-Interactive):** An agent is launched with a specific instruction. It works in an ephemeral worktree to avoid locking the user's main working directory.
     *   *Command:* `gemini-toolbox --worktree "Refactor auth logic in app/models.py"`
-4.  **The Parallel Multi-Tasker:** A user launches multiple agents on different branches simultaneously. Each lives in its own worktree.
+4.  **The Parallel Multi-Tasker:** A user launches multiple agents on different branches simultaneously. Each lives in its own worktree, avoiding `index.lock` conflicts.
+5.  **The Risky Reviewer (Alternative Journey):** A user wants to inspect a PR with potential side effects. While we prioritized IDE integration over pure container isolation, the worktree still provides a layer of filesystem separation for these "look-but-don't-touch" scenarios.
 
 ## Proposed Decision: Smart Branching Logic
 
@@ -74,12 +75,13 @@ If the `--worktree` flag is used in a directory that is not part of a Git reposi
 *   **Reason for Rejection:** Highly fragile. The parent directory might be read-only, part of a different volume, or a disorganized "Downloads" folder. It creates "clutter sprawl" across the user's filesystem.
 
 ### 3. Pure Container Isolation (`--isolation container`)
-*   **Idea:** Create the worktree inside a Docker Volume or a temporary path like `/tmp`, offering zero host footprint.
-*   **Intended Use Case:** "The Risky Reviewer" - inspecting potentially malicious PRs without any files touching the host disk.
-*   **Reason for Rejection:** 
-    *   **IDE Friction:** Prevents host-based IDEs (VS Code) from accessing the files, breaking a core mandate of the toolbox.
-    *   **Complexity:** Requires complex orchestration to manage volumes or temporary paths shared between containers.
-    *   **Decision:** We prioritized developer experience (IDE access) over the extreme isolation required for malware analysis. If "Risky Review" becomes a critical need, we can revisit this as a specialized `gemini-toolbox --secure-review` mode in the future.
+*   **Idea:** Create the worktree inside a Docker Volume or the container's internal filesystem (or a temporary path like `/tmp`).
+*   **Pros:** Theoretically "zero footprint" on the host disk's primary partitions.
+*   **Cons:** 
+    *   **IDE Friction:** Prevents the host's VS Code from accessing the files, breaking one of the core mandates of the toolbox.
+    *   **Complexity:** Requires complex orchestration to manage volumes or temporary paths that must be shared between the "Pre-flight" naming container and the "Main" agent container.
+    *   **Redundancy:** The `disk` mode using `$XDG_CACHE_HOME` already provides sufficient isolation from the user's primary workspace.
+*   **Decision:** **REJECTED.** The marginal benefit of "container-only" storage does not outweigh the loss of developer productivity (IDE access) and the maintenance burden of a dual-path implementation.
 
 ### 4. Filesystem-Level Snapshots (OverlayFS / Btrfs CoW)
 *   **Idea:** Use Copy-on-Write snapshots or OverlayFS mounts.
