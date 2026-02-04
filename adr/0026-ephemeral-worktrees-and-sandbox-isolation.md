@@ -33,7 +33,7 @@ To ensure a seamless UX, the branching logic is **built into the `gemini-toolbox
 
 ### Branch Resolution Protocol:
 1.  **Explicit Branch Provided:** If the user provides a branch name (e.g., `--worktree feat/ui`), the CLI uses it directly.
-2.  **Task Provided (Pre-Flight Naming):** If a task string is provided, a "Pre-Flight" call is made to a **Fast Model** (e.g., Gemini 2.0 Flash).
+2.  **Task Provided (Pre-Flight Naming):** If a task string is provided, a "Pre-Flight" call is made to a **Fast Model** (e.g., Gemini 2.5 Flash).
     *   **Constraint:** The model is invoked with a strict system instruction: "You are a git branch naming utility. Slugify the input task into a concise branch name. Return ONLY the slug. Do not analyze the codebase or provide explanations."
     *   The resulting slug is used for both the branch and the folder.
 3.  **No Input Provided (Interactive Exploration):**
