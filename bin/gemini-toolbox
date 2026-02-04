@@ -341,6 +341,7 @@ else
 fi
 
 # 2.2.1 Setup Worktree (if requested)
+ORIGINAL_PROJECT_DIR="$PROJECT_DIR"
 if [ "$ENABLE_WORKTREE" = true ]; then
     setup_worktree "$WORKTREE_INPUT"
 fi
@@ -492,6 +493,7 @@ DOCKER_ARGS=(
   # We mount the project at the EXACT SAME path as the host (not /home/gemini/workspace).
   # The Gemini CLI checks that PWD inside match the Workspace Path in VS Code.
   --volume "${PROJECT_DIR}:${PROJECT_DIR}"
+  --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}"
   --volume "${HOST_CONF_DIR}:/home/gemini/.gemini"
   # Shared Host Caches (Performance & Convenience)
   --volume "${HOME}/.m2:/home/gemini/.m2"
