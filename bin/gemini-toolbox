@@ -71,6 +71,13 @@ setup_worktree() {
         exit 1
     fi
 
+    # Ensure we are NOT already in a worktree (.git is a file)
+    if [ -f "$(git rev-parse --show-toplevel)/.git" ]; then
+        echo "Error: --worktree is not supported from within another worktree." >&2
+        echo "       Please run this command from the main repository." >&2
+        exit 1
+    fi
+
     # 1. Determine Branch Name
     if [[ -z "$INPUT" ]]; then
         # Interactive Exploration (Detached HEAD)
@@ -496,20 +503,12 @@ DOCKER_ARGS=(
   
   # --- Parent Repo Mounting Strategy ---
   # We need the parent repo for Git history/objects.
-  # 1. Standard Repo: Mount Parent :ro, but .git :rw (Surgical Safety).
-  # 2. Nested Worktree: Fallback to Parent :rw (Complexity Avoidance).
+  # We mount Parent :ro for security, but .git :rw for Git functionality.
   )
-  if [ -d "${ORIGINAL_PROJECT_DIR}/.git" ]; then
-      DOCKER_ARGS+=(
-          --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}:ro"
-          --volume "${ORIGINAL_PROJECT_DIR}/.git:${ORIGINAL_PROJECT_DIR}/.git"
-      )
-  else
-      # .git is a file (worktree) or missing -> Fallback to full RW
-      DOCKER_ARGS+=(
-          --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}"
-      )
-  fi
+  DOCKER_ARGS+=(
+      --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}:ro"
+      --volume "${ORIGINAL_PROJECT_DIR}/.git:${ORIGINAL_PROJECT_DIR}/.git"
+  )
 
   DOCKER_ARGS+=(
   --volume "${HOST_CONF_DIR}:/home/gemini/.gemini"

@@ -54,7 +54,6 @@ We will implement a centralized management strategy for ephemeral worktrees on t
 *   **Surgical Mount Strategy:** To ensure Git history is accessible while protecting the parent repository's source code:
     *   The Parent Project is mounted as **Read-Only** (`:ro`).
     *   The Parent's `.git` directory is mounted as **Read-Write** (`:rw`) on top.
-    *   **Fallback:** If the parent is itself a worktree (so `.git` is a file), we fallback to mounting the entire parent as Read-Write to ensure Git can resolve the pointers.
 *   The Toolbox automatically mounts this path into the container.
 *   **Cleanup:** The Hub will implement a "Stateless Reaper" protocol.
     *   **Mechanism:** Standard directory timestamp monitoring (`mtime`).
@@ -75,6 +74,13 @@ If the directory is a Git repository but has no commits (e.g., immediately after
 1.  The script will detect that `HEAD` is an invalid reference.
 2.  Display a clear error message: `Error: Cannot create a worktree from an empty repository.`
 3.  Exit with a non-zero status code, advising the user to make an initial commit first.
+
+## Nested Worktree Handling
+
+The `--worktree` feature is not supported from within another worktree. If run from a nested worktree:
+1.  The script will detect that `.git` is a file rather than a directory.
+2.  Display a clear error message: `Error: --worktree is not supported from within another worktree.`
+3.  Exit with a non-zero status code, advising the user to run the command from the main repository.
 
 ## Alternatives Considered
 
