@@ -73,7 +73,7 @@ setup_worktree() {
         local SLUG=$(docker run --rm \
             -v "${HOST_CONF_DIR}:/home/gemini/.gemini" \
             "${IMAGE_NAME}" \
-            --model gemini-1.5-flash \
+            --model gemini-2.0-flash \
             "You are a git branch naming utility. Slugify the input task into a concise branch name. Return ONLY the slug. Do not analyze the codebase or provide explanations. Task: $INPUT")
         
         # Cleanup potential carriage returns or whitespace
