@@ -63,6 +63,17 @@ If the `--worktree` flag is used in a directory that is not part of a Git reposi
 2.  Display a clear error message: `Error: --worktree can only be used within a Git repository.`
 3.  Exit with a non-zero status code without launching the container or creating directories.
 
+## Alternatives Considered
+
+### 1. Pure Container Isolation (`--isolation container`)
+*   **Idea:** Create the worktree inside a Docker Volume or the container's internal filesystem (or a temporary path like `/tmp`).
+*   **Pros:** Theoretically "zero footprint" on the host disk's primary partitions.
+*   **Cons:** 
+    *   **IDE Friction:** Prevents the host's VS Code from accessing the files, breaking one of the core mandates of the toolbox.
+    *   **Complexity:** Requires complex orchestration to manage volumes or temporary paths that must be shared between the "Pre-flight" naming container and the "Main" agent container.
+    *   **Redundancy:** The `disk` mode using `$XDG_CACHE_HOME` already provides sufficient isolation from the user's primary workspace.
+*   **Decision:** **REJECTED.** The marginal benefit of "container-only" storage does not outweigh the loss of developer productivity (IDE access) and the maintenance burden of a dual-path implementation.
+
 ## Trade-offs and Arbitrages
 
 | Feature | Decision |
