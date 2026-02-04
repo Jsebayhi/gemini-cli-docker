@@ -493,7 +493,25 @@ DOCKER_ARGS=(
   # We mount the project at the EXACT SAME path as the host (not /home/gemini/workspace).
   # The Gemini CLI checks that PWD inside match the Workspace Path in VS Code.
   --volume "${PROJECT_DIR}:${PROJECT_DIR}"
-  --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}"
+  
+  # --- Parent Repo Mounting Strategy ---
+  # We need the parent repo for Git history/objects.
+  # 1. Standard Repo: Mount Parent :ro, but .git :rw (Surgical Safety).
+  # 2. Nested Worktree: Fallback to Parent :rw (Complexity Avoidance).
+  )
+  if [ -d "${ORIGINAL_PROJECT_DIR}/.git" ]; then
+      DOCKER_ARGS+=(
+          --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}:ro"
+          --volume "${ORIGINAL_PROJECT_DIR}/.git:${ORIGINAL_PROJECT_DIR}/.git"
+      )
+  else
+      # .git is a file (worktree) or missing -> Fallback to full RW
+      DOCKER_ARGS+=(
+          --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}"
+      )
+  fi
+
+  DOCKER_ARGS+=(
   --volume "${HOST_CONF_DIR}:/home/gemini/.gemini"
   # Shared Host Caches (Performance & Convenience)
   --volume "${HOME}/.m2:/home/gemini/.m2"

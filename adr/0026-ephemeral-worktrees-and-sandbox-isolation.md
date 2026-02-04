@@ -51,7 +51,10 @@ To prevent clutter and allow for project-level management, worktrees are nested 
 We will implement a centralized management strategy for ephemeral worktrees on the host disk:
 
 *   **Location:** Defaults to the nested structure described above. This adheres to Linux standards for cached/transient data. Users can override this by setting `GEMINI_WORKTREE_ROOT`.
-*   **Dual-Mount Strategy:** To ensure Git history and metadata are accessible inside the container, the Toolbox automatically mounts **both** the worktree folder and the original parent repository folder. This allows Git to resolve the links in the `.git` file which point back to the main repository's object database.
+*   **Surgical Mount Strategy:** To ensure Git history is accessible while protecting the parent repository's source code:
+    *   The Parent Project is mounted as **Read-Only** (`:ro`).
+    *   The Parent's `.git` directory is mounted as **Read-Write** (`:rw`) on top.
+    *   **Fallback:** If the parent is itself a worktree (so `.git` is a file), we fallback to mounting the entire parent as Read-Write to ensure Git can resolve the pointers.
 *   The Toolbox automatically mounts this path into the container.
 *   **Cleanup:** The Hub will implement a "Stateless Reaper" protocol.
     *   **Mechanism:** Standard directory timestamp monitoring (`mtime`).
