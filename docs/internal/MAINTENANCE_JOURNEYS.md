@@ -168,3 +168,28 @@ This document tracks the full end-to-end user journeys for regression testing. U
     *   Make changes and save (`:wq`).
     *   **Verify:** `cat test_edit.txt` shows changes.
     *   **Verify:** Latency/Rendering is usable (uses `ttyd`).
+
+## 🌳 Journey 14: Ephemeral Worktrees
+**Goal:** Verify isolation and smart branching logic using Git Worktrees.
+
+1.  **Auto-Naming (Task-based):**
+    *   In a Git repo, run `gemini-toolbox --worktree "Refactor the readme"`.
+    *   **Verify:** The CLI performs a pre-flight naming call.
+    *   **Verify:** A new worktree is created in `~/.cache/gemini-toolbox/worktrees/{project}/{slug}`.
+    *   **Verify:** A new Git branch exists with the slugified name.
+2.  **Manual Branching:**
+    *   Run `gemini-toolbox --worktree feat/test-branch chat`.
+    *   **Verify:** Worktree is created at `.../feat-test-branch`.
+    *   **Verify:** Branch `feat/test-branch` is created and checked out.
+3.  **Detached Exploration:**
+    *   Run `gemini-toolbox --worktree chat`.
+    *   **Verify:** Worktree is created with a folder named `exploration-UUID`.
+    *   **Verify:** Git is in `detached HEAD` state (verify with `git branch` inside the session).
+4.  **Resumability:**
+    *   Exit the previous "Manual Branching" session.
+    *   Run the exact same command again.
+    *   **Verify:** The CLI detects the worktree already exists and reuses it without error.
+5.  **Safety Check:**
+    *   Go to a non-Git directory (e.g., `/tmp`).
+    *   Run `gemini-toolbox --worktree`.
+    *   **Verify:** CLI exits with `Error: --worktree can only be used within a Git repository.`
