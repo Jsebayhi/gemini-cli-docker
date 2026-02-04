@@ -29,14 +29,17 @@ The worktree feature is designed to support the following high-level workflows:
 
 ## Proposed Decision: Smart Branching Logic
 
-To ensure a seamless UX, the branching logic is **built into the `gemini-toolbox` wrapper**. The environment is prepared before the container starts, ensuring the agent lands in a ready-to-work state.
+To ensure a seamless UX, the branching logic is **built into the `gemini-toolbox` wrapper**.
 
 ### Branch Resolution Protocol:
-1.  **Branch Provided + Exists:** `git worktree add [path] [branch]`
-2.  **Branch Provided + New:** `git worktree add -b [branch] [path]`
-3.  **No Branch Provided:**
-    *   If a task string is provided, a UUID-based branch name (e.g., `gem-worktree-a1b2`) is generated.
-    *   Otherwise, uses a `detached HEAD` for purely ephemeral exploration.
+1.  **Explicit Branch Provided:** If the user provides a valid branch name (e.g., `feat/ui`), the CLI uses it directly: `git worktree add [path] [branch]`.
+2.  **Task Provided (Pre-Flight Naming):** If the user provides a descriptive task instead of a branch name:
+    *   The CLI performs a "Pre-Flight" one-shot call to the Gemini API using the current profile.
+    *   **Prompt:** "Summarize the following task into a concise, slugified Git branch name. Return ONLY the slug: '$TASK'".
+    *   The resulting slug is used to create the branch and the worktree folder.
+    *   **Fallback:** If the API call fails, the CLI falls back to a UUID-based name or a simple slug of the first few words.
+3.  **No Input Provided:**
+    *   Uses a `detached HEAD` for purely ephemeral exploration.
 
 ## Proposed Decision: Dual-Mode Isolation
 
