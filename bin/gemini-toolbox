@@ -241,8 +241,12 @@ while [[ $# -gt 0 ]]; do
     --worktree)
         ENABLE_WORKTREE=true
         # Optional argument: Check if next arg exists, is NOT a flag, 
-        # and is NOT a reserved command (chat, update, stop-hub, connect)
-        if [[ -n "$2" && "$2" != -* && "$2" != "chat" && "$2" != "update" && "$2" != "stop-hub" && "$2" != "connect" ]]; then
+        # and is NOT a reserved command (toolbox or gemini-cli subcommands)
+        if [[ -n "$2" && "$2" != -* && \
+              "$2" != "update" && "$2" != "stop-hub" && "$2" != "connect" && \
+              "$2" != "mcp" && "$2" != "extensions" && "$2" != "extension" && \
+              "$2" != "skills" && "$2" != "skill" && "$2" != "hooks" && \
+              "$2" != "hook" ]]; then
             WORKTREE_INPUT="$2"
             shift
         else
@@ -502,15 +506,18 @@ DOCKER_ARGS=(
   # We mount the project at the EXACT SAME path as the host (not /home/gemini/workspace).
   # The Gemini CLI checks that PWD inside match the Workspace Path in VS Code.
   --volume "${PROJECT_DIR}:${PROJECT_DIR}"
-  
+  )
+
   # --- Parent Repo Mounting Strategy ---
-  # We need the parent repo for Git history/objects.
-  # We mount Parent :ro for security, but .git :rw for Git functionality.
-  )
-  DOCKER_ARGS+=(
-      --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}:ro"
-      --volume "${ORIGINAL_PROJECT_DIR}/.git:${ORIGINAL_PROJECT_DIR}/.git"
-  )
+  # Only mount parent if we are in a worktree (PROJECT_DIR != ORIGINAL_PROJECT_DIR)
+  if [ "$PROJECT_DIR" != "$ORIGINAL_PROJECT_DIR" ]; then
+      # We need the parent repo for Git history/objects.
+      # We mount Parent :ro for security, but .git :rw for Git functionality.
+      DOCKER_ARGS+=(
+          --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}:ro"
+          --volume "${ORIGINAL_PROJECT_DIR}/.git:${ORIGINAL_PROJECT_DIR}/.git"
+      )
+  fi
 
   DOCKER_ARGS+=(
   --volume "${HOST_CONF_DIR}:/home/gemini/.gemini"
