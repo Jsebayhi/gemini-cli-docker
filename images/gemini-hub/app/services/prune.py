@@ -59,8 +59,29 @@ class PruneService:
                 if not os.path.isdir(worktree_path):
                     continue
                 
-                # Determine expiry based on folder prefix
-                is_headless = worktree_dir.startswith("exploration-")
+                # Determine state using Git
+                # Branch: returns 0, Headless: returns 1, Orphan/Error: returns other
+                try:
+                    result = subprocess.run(
+                        ["git", "-C", worktree_path, "symbolic-ref", "-q", "HEAD"],
+                        capture_output=True,
+                        text=True
+                    )
+                    
+                    if result.returncode == 0:
+                        is_headless = False
+                        type_label = "branch"
+                    elif result.returncode == 1:
+                        is_headless = True
+                        type_label = "headless"
+                    else:
+                        # Safety Default: Treat as Branch (Long retention) for orphans/errors
+                        is_headless = False
+                        type_label = "ambiguous/orphan"
+                except Exception:
+                    is_headless = False
+                    type_label = "error/fallback"
+
                 expiry_seconds = expiry_headless_sec if is_headless else expiry_branch_sec
                 
                 # Check directory mtime
@@ -68,7 +89,6 @@ class PruneService:
                 age = now - mtime
                 
                 if age > expiry_seconds:
-                    type_label = "headless" if is_headless else "branch"
                     logger.info(f"Pruning stale {type_label} worktree: {worktree_path} (Age: {int(age/86400)} days)")
                     try:
                         # Recursive removal of the directory
