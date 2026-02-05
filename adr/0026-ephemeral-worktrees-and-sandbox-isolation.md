@@ -1,7 +1,7 @@
 # ADR 0026: Ephemeral Worktrees and Isolation
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 Users and autonomous agents need a way to perform experimental work (refactoring, feature exploration, automated patching) without polluting their primary working directory. We are implementing this using Git's native `worktree` feature to provide isolation while maintaining IDE compatibility.
@@ -15,103 +15,72 @@ Users and autonomous agents need a way to perform experimental work (refactoring
 
 ## User Journeys
 
-The worktree feature is designed to support the following high-level workflows:
+The worktree feature supports the following high-level workflows:
 
-1.  **The Fresh Start (New Feature):** A user wants to start work on a new branch in an isolated folder. The CLI handles branch creation (`git worktree add -b`) automatically.
-    *   *Command:* `gemini-toolbox --worktree feat/ui-v2 chat`
-2.  **The PR Repair (Existing Branch):** An agent (or human) needs to fix a bug in an existing branch. The CLI detects the branch and sets up the worktree correctly.
-    *   *Command:* `gemini-toolbox --worktree fix/bug-123 chat`
-3.  **The Autonomous Task (Non-Interactive):** An agent is launched with a specific instruction. It works in an ephemeral worktree to avoid locking the user's main working directory.
-    *   *Command:* `gemini-toolbox --worktree "Refactor auth logic in app/models.py"`
-4.  **The Parallel Multi-Tasker:** A user launches multiple agents on different branches simultaneously. Each lives in its own worktree, avoiding `index.lock` conflicts.
-5.  **The Risky Reviewer (Alternative Journey):** A user wants to inspect a PR with potential side effects. While we prioritized IDE integration over pure container isolation, the worktree still provides a layer of filesystem separation for these "look-but-don't-touch" scenarios.
+1.  **The Fresh Start (New Feature):** A user wants to start work on a new branch. The CLI handles branch creation via AI naming based on the intent string.
+    *   *Command:* `gemini-toolbox --worktree "Refactor auth logic"`
+2.  **The PR Repair (Existing Branch):** A user needs to fix a bug in an existing branch. The CLI detects the branch and sets up the worktree correctly.
+    *   *Command:* `gemini-toolbox --worktree fix/bug-123`
+3.  **The Explicit Context:** A user wants to be 100% certain of the target branch, regardless of the prompt content.
+    *   *Command:* `gemini-toolbox --worktree --branch feat/ui "Fix buttons"`
+4.  **The Monitoring Session (Named Interaction):** A user wants an interactive session in a named workspace (e.g., to keep logs or context separate).
+    *   *Command:* `gemini-toolbox --worktree "Monitor PR review comments"`
+5.  **The Parallel Multi-Tasker:** A user launches multiple agents on different branches simultaneously. Each lives in its own worktree, avoiding `index.lock` conflicts.
+6.  **The Risky Reviewer (Alternative Journey):** A user wants to inspect a PR with potential side effects. The worktree provides a layer of filesystem separation for these "look-but-don't-touch" scenarios.
+7.  **Safe Exploration:** A user wants to browse the code or run a quick test without creating any branch or committing to a task.
+    *   *Command:* `gemini-toolbox --worktree`
 
-## Proposed Decision: Smart Branching Logic
+## Proposed Decision: Smart Resolution Architecture
 
-To ensure a seamless UX, the branching logic is **built into the `gemini-toolbox` wrapper**.
+We have decoupled the **Environment** (`--worktree`) from the **Context** (`--branch`) and the **Intent** (Positional Args).
 
-### Branch Resolution Protocol:
-1.  **Explicit Branch Provided:** If the user provides a branch name (e.g., `--worktree feat/ui`), the CLI uses it directly.
-    *   **Deterministic Parsing:** To avoid ambiguity between branch names and application arguments, the parser consumes the very next token as the worktree argument unless it starts with a hyphen (`-`).
-    *   **The Terminator (`--`):** Users can use the standard CLI terminator to force a detached worktree session while still providing application arguments (e.g., `gemini-toolbox --worktree -- "Summarize this"`).
-2.  **Task Provided (Pre-Flight Naming):** If a task string is provided, a "Pre-Flight" call is made to a **Fast Model** (e.g., Gemini 2.5 Flash).
-    *   **Constraint:** The model is invoked with a strict system instruction: "You are a git branch naming utility. Slugify the input task into a concise branch name. Return ONLY the slug. Do not analyze the codebase or provide explanations."
-    *   The resulting slug is used for both the branch and the folder.
-3.  **No Input Provided (Interactive Exploration):**
-    *   The CLI creates a worktree with a **Detached HEAD** at the current commit.
-    *   The folder is named `exploration-UUID`.
-    *   **Benefit:** Allows the user to browse and experiment without creating a branch. The user can promote the state to a branch at any time using `git checkout -b` from within the worktree.
+### 1. The Priority Matrix
+When `--worktree` is enabled, the Git reference is resolved using the following priority:
 
-### Directory Structure:
-To prevent clutter and allow for project-level management, worktrees are nested by project name:
-`$XDG_CACHE_HOME/gemini-toolbox/worktrees/${PROJECT_NAME}/${SANITIZED_BRANCH_NAME}`
+| Input Pattern | Logic Applied | Resulting Branch | Resulting Task |
+| :--- | :--- | :--- | :--- |
+| `--branch X ...` | **Explicit Override** | `X` | Remaining Args |
+| `[Existing Branch] ...` | **Auto-Detection** | `[Existing Branch]` | Remaining Args |
+| `[Task String] ...` | **AI Naming** | `ai-generated-slug` | `[Task String]` |
+| (No arguments) | **Safe Default** | `Detached HEAD` | None |
 
-*   **Sanitization:** Slashes in branch names (e.g., `feat/ui`) are converted to hyphens (e.g., `feat-ui`) for the folder name to ensure filesystem compatibility and a flat structure within the project subfolder.
+### 2. The Syntactic Heuristic
+To provide a "Just Works" experience without brittle keyword lists, the parser uses a **Non-Consuming Peek**:
+*   The first positional argument is checked against the local Git references (`git show-ref`).
+*   If a match is found, it is treated as the **Context** and removed from the agent's task list.
+*   If no match is found (or if the arg contains spaces), the entire argument list is treated as the **Intent**, triggering a one-shot naming call to **Gemini 2.5 Flash**.
+
+### 3. Pre-Flight AI Naming
+When a task is provided without an explicit branch, the CLI performs a sub-second call to a "Fast" model (Gemini 2.5 Flash) with a strict system instruction:
+*"You are a git branch naming utility. Slugify the input task into a concise branch name. Return ONLY the slug. Do not analyze the codebase or provide explanations."*
 
 ## Proposed Decision: Centralized Worktree Management
 
-We will implement a centralized management strategy for ephemeral worktrees on the host disk:
-
-*   **Location:** Defaults to the nested structure described above. This adheres to Linux standards for cached/transient data. Users can override this by setting `GEMINI_WORKTREE_ROOT`.
-*   **Surgical Mount Strategy:** To ensure Git history is accessible while protecting the parent repository's source code:
+*   **Location:** Nested by project to prevent clutter: `$XDG_CACHE_HOME/gemini-toolbox/worktrees/${PROJECT_NAME}/${SANITIZED_BRANCH_NAME}`.
+*   **Surgical Mount Strategy:** To protect the parent repository while allowing Git operations:
     *   The Parent Project is mounted as **Read-Only** (`:ro`).
     *   The Parent's `.git` directory is mounted as **Read-Write** (`:rw`) on top.
-*   The Toolbox automatically mounts this path into the container.
-*   **Cleanup:** The Hub will implement a "Stateless Reaper" protocol.
-    *   **Mechanism:** Standard directory timestamp monitoring (`mtime`).
-    *   The Hub periodically scans the project-level folders for directories with an `mtime` older than 30 days.
-    *   Stale directories are removed, followed by `git worktree prune`.
-    *   **Orphan Handling:** This stateless approach naturally handles "orphaned" worktrees (where the main repo was deleted) by treating them as standard stale directories.
+*   **Cleanup:** The Gemini Hub implements a "Stateless Reaper" that removes worktrees with an `mtime` older than 30 days.
 
-## Non-Git Project Handling
+## Alternatives Considered (Rejected)
 
-If the `--worktree` flag is used in a directory that is not part of a Git repository, the `gemini-toolbox` script will:
-1.  Detect the absence of a `.git` folder (via `git rev-parse`).
-2.  Display a clear error message: `Error: --worktree can only be used within a Git repository.`
-3.  Exit with a non-zero status code without launching the container or creating directories.
+### 1. Brittle Keyword Lists
+*   **Idea:** Hardcode commands like `chat` or `hooks` to avoid consuming them as branches.
+*   **Reason for Rejection:** High maintenance burden and fragile as the underlying CLI evolves.
 
-## Empty Repository Handling
-
-If the directory is a Git repository but has no commits (e.g., immediately after `git init`):
-1.  The script will detect that `HEAD` is an invalid reference.
-2.  Display a clear error message: `Error: Cannot create a worktree from an empty repository.`
-3.  Exit with a non-zero status code, advising the user to make an initial commit first.
-
-## Nested Worktree Handling
-
-The `--worktree` feature is not supported from within another worktree. If run from a nested worktree:
-1.  The script will detect that `.git` is a file rather than a directory.
-2.  Display a clear error message: `Error: --worktree is not supported from within another worktree.`
-3.  Exit with a non-zero status code, advising the user to run the command from the main repository.
-
-## Alternatives Considered
-
-### 1. Project-Local Sandboxes (`.gemini/worktrees`)
-*   **Idea:** Keep the worktrees inside a hidden folder within the project.
-*   **Reason for Rejection:** Git worktrees cannot easily reside inside the parent worktree without recursion issues. It also pollutes the primary project directory, violating the "Zero Clutter" principle.
-
-### 2. Relative Sibling Paths (`../project-sandbox`)
-*   **Idea:** Create the worktree as a sibling directory.
-*   **Reason for Rejection:** Highly fragile. The parent directory might be read-only, part of a different volume, or a disorganized "Downloads" folder. It creates "clutter sprawl" across the user's filesystem.
+### 2. Mandatory Terminator (`--`)
+*   **Idea:** Force users to separate worktree args from agent args using `--`.
+*   **Reason for Rejection:** Standard but poor UX. Users forget it, leading to "branch named 'chat'" bugs.
 
 ### 3. Pure Container Isolation (`--isolation container`)
-*   **Idea:** Create the worktree inside a Docker Volume or the container's internal filesystem (or a temporary path like `/tmp`).
-*   **Pros:** Theoretically "zero footprint" on the host disk's primary partitions.
-*   **Cons:** 
-    *   **IDE Friction:** Prevents the host's VS Code from accessing the files, breaking one of the core mandates of the toolbox.
-    *   **Complexity:** Requires complex orchestration to manage volumes or temporary paths that must be shared between the "Pre-flight" naming container and the "Main" agent container.
-    *   **Redundancy:** The `disk` mode using `$XDG_CACHE_HOME` already provides sufficient isolation from the user's primary workspace.
-*   **Decision:** **REJECTED.** The marginal benefit of "container-only" storage does not outweigh the loss of developer productivity (IDE access) and the maintenance burden of a dual-path implementation.
+*   **Idea:** Worktree inside a Docker Volume.
+*   **Reason for Rejection:** Prevents VS Code/local IDE integration, breaking a core mandate of the toolbox.
 
-### 4. Filesystem-Level Snapshots (OverlayFS / Btrfs CoW)
-*   **Idea:** Use Copy-on-Write snapshots or OverlayFS mounts.
-*   **Reason for Rejection:** Significant overengineering. Requires specific filesystem support or elevated privileges (`sudo`). Native `git worktree` is idiomatic, portable, and natively understands branch logic.
+### 4. Filesystem Snapshots (OverlayFS / CoW)
+*   **Idea:** Use Btrfs/ZFS snapshots.
+*   **Reason for Rejection:** Platform-specific (Linux only) and requires elevated privileges. Git Worktrees are standard and portable.
 
-## Trade-offs and Arbitrages
+## Technical Constraints
 
-| Feature | Decision |
-| :--- | :--- |
-| **Visibility** | Visible to Host (VS Code) for high fidelity |
-| **Cleanup** | Scheduled Reaper (mtime) for statelessness |
-| **Speed** | Fast (Local FS) |
-| **Context** | Git-Centric (Requires a repository) |
+*   **Empty Repositories:** Worktree creation is forbidden if the repository has zero commits (no `HEAD`).
+*   **Recursive Worktrees:** Creating a worktree from *within* an existing worktree is forbidden to keep logic simple and robust.
