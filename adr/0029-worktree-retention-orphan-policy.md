@@ -46,6 +46,7 @@ If a worktree's state is ambiguous (e.g., the parent repo path in the `.git` fil
 
 | Feature | Decision |
 | :--- | :--- |
-| **Precision** | Medium (Relies on naming convention) |
-| **Safety** | High (Defaults to Max Retention) |
-| **Robustness** | High (Works across container boundaries) |
+| **Precision** | High (Uses actual Git state for classification) |
+| **Safety** | High (Defaults to Max Retention for ambiguous/orphaned worktrees) |
+| **Robustness** | High (Handles path mismatches in container environments gracefully) |
+
