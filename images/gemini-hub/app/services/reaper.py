@@ -14,8 +14,8 @@ class ReaperService:
     @staticmethod
     def start():
         """Launch the background reaper thread."""
-        if Config.WORKTREE_EXPIRY_DAYS <= 0:
-            logger.info("Worktree Reaper disabled (Expiry set to 0 or less).")
+        if not Config.HUB_REAPER_ENABLED:
+            logger.info("Worktree Reaper disabled (explicitly toggled off).")
             return
 
         logger.info(f"Worktree Reaper started (Expiry: {Config.WORKTREE_EXPIRY_DAYS} days).")

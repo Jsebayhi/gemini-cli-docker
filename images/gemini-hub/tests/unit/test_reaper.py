@@ -49,3 +49,15 @@ def test_reaper_skip_non_dir(tmp_path):
     # Should not crash
     ReaperService.prune()
     assert dummy_file.exists()
+
+def test_reaper_disabled(mocker):
+    # Setup
+    Config.HUB_REAPER_ENABLED = False
+    mock_thread = mocker.patch("threading.Thread")
+    
+    # Run
+    ReaperService.start()
+    
+    # Verify
+    mock_thread.assert_not_called()
+
