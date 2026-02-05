@@ -52,7 +52,7 @@ def test_prune_skip_non_dir(tmp_path):
 
 def test_prune_disabled(mocker):
     # Setup
-    Config.HUB_PRUNE_ENABLED = False
+    Config.HUB_WORKTREE_PRUNE_ENABLED = False
     mock_thread = mocker.patch("threading.Thread")
     
     # Run

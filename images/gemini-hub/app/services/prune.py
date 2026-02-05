@@ -14,7 +14,7 @@ class PruneService:
     @staticmethod
     def start():
         """Launch the background prune thread."""
-        if not Config.HUB_PRUNE_ENABLED:
+        if not Config.HUB_WORKTREE_PRUNE_ENABLED:
             logger.info("Worktree Pruning disabled (explicitly toggled off).")
             return
 

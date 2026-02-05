@@ -81,7 +81,7 @@ if [ "$AUTO_SHUTDOWN" = true ]; then
 fi
 
 if [ "$PRUNE_ENABLED" = false ]; then
-    ENV_VARS+=("--env" "HUB_PRUNE_ENABLED=false")
+    ENV_VARS+=("--env" "HUB_WORKTREE_PRUNE_ENABLED=false")
 fi
 
 # --- SMART RESTART LOGIC ---
