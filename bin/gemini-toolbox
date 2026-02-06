@@ -100,6 +100,7 @@ setup_worktree() {
             
             local SLUG
             SLUG=$(docker run --rm \
+                "${EXTRA_DOCKER_ARGS[@]}" \
                 -v "${HOST_CONF_DIR}:/home/gemini/.gemini" \
                 "${IMAGE_NAME}" \
                 --model gemini-2.5-flash \
@@ -536,7 +537,6 @@ DOCKER_ARGS=(
     --workdir "${PROJECT_DIR}"
     "${EXTRA_DOCKER_ARGS[@]}"
   )
-
 
 # Conditionally Add Docker Support
 if [ "$ENABLE_DOCKER" = true ]; then
