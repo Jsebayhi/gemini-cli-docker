@@ -48,11 +48,10 @@ show_help() {
 
 # Worktree Setup Function
 setup_worktree() {
-    local INPUT="$1"
     local WORKTREE_BASE="${GEMINI_WORKTREE_ROOT:-${XDG_CACHE_HOME:-$HOME/.cache}/gemini-toolbox/worktrees/${PROJECT_NAME}}"
     local BRANCH_NAME=""
     local FOLDER_NAME=""
-    local TASK_TO_INJECT=""
+    local TASK_STRING=""
 
     # Ensure git is available
     if ! command -v git &> /dev/null; then
@@ -80,45 +79,52 @@ setup_worktree() {
         exit 1
     fi
 
-    # 1. Determine Branch Name
-    if [[ -z "$INPUT" ]]; then
-        # Interactive Exploration (Detached HEAD)
+    # 1. Resolve Branch & Context
+    if [[ -n "$TARGET_BRANCH" ]]; then
+        # Case A: Explicit Flag Wins
+        BRANCH_NAME="$TARGET_BRANCH"
+        echo ">> Worktree: Using explicit branch '$BRANCH_NAME'"
+    elif [[ ${#ARGS[@]} -gt 0 ]]; then
+        # Case B: Smart Detection
+        local PEEK="${ARGS[0]}"
+        # Check if first arg is an existing branch
+        if git show-ref --verify --quiet "refs/heads/$PEEK" || git show-ref --verify --quiet "refs/remotes/origin/$PEEK"; then
+            BRANCH_NAME="$PEEK"
+            # Consume the branch name from positional args
+            ARGS=("${ARGS[@]:1}")
+            echo ">> Worktree: Detected existing branch '$BRANCH_NAME'"
+        else
+            # Case C: It's a task -> AI Naming
+            TASK_STRING="${ARGS[*]}"
+            echo ">> Worktree: Task detected. Generating branch name..."
+            
+            local SLUG
+            SLUG=$(docker run --rm \
+                -v "${HOST_CONF_DIR}:/home/gemini/.gemini" \
+                "${IMAGE_NAME}" \
+                --model gemini-2.5-flash \
+                "You are a git branch naming utility. Slugify the input task into a concise branch name. Return ONLY the slug. Do not analyze the codebase or provide explanations. Task: $TASK_STRING")
+            
+            SLUG=$(echo "$SLUG" | tr -d '\r' | tr -d '[:space:]')
+            if [[ -z "$SLUG" || "$SLUG" == *"Error"* ]]; then
+                SLUG="gem-task-$(date +%s)"
+                echo ">> Warning: Failed to generate name. Using fallback: $SLUG"
+            fi
+            
+            BRANCH_NAME="$SLUG"
+            echo ">> Generated Branch: $BRANCH_NAME"
+        fi
+    else
+        # Case D: Interactive Exploration (Detached HEAD)
         local UUID
         UUID=$(head -c 8 /proc/sys/kernel/random/uuid 2>/dev/null || date +%s)
         FOLDER_NAME="exploration-${UUID}"
         echo ">> Worktree: Interactive Exploration (Detached HEAD)"
-    elif [[ "$INPUT" =~ [[:space:]] ]]; then
-        # Task Provided -> Pre-Flight Naming
-        echo ">> Worktree: Task detected. Generating branch name..."
-        
-        # Call Gemini Pre-Flight (One-shot container)
-        # We assume the image is already resolved (IMAGE_NAME available from main scope)
-        local SLUG
-        SLUG=$(docker run --rm \
-            -v "${HOST_CONF_DIR}:/home/gemini/.gemini" \
-            "${IMAGE_NAME}" \
-            --model gemini-2.5-flash \
-            "You are a git branch naming utility. Slugify the input task into a concise branch name. Return ONLY the slug. Do not analyze the codebase or provide explanations. Task: $INPUT")
-        
-        # Cleanup potential carriage returns or whitespace
-        SLUG=$(echo "$SLUG" | tr -d '\r' | tr -d '[:space:]')
+    fi
 
-        # Fallback if empty or error
-        if [[ -z "$SLUG" || "$SLUG" == *"Error"* ]]; then
-            SLUG="gem-task-$(date +%s)"
-            echo ">> Warning: Failed to generate name. Using fallback: $SLUG"
-        fi
-        
-        BRANCH_NAME="$SLUG"
-        FOLDER_NAME="$SLUG"
-        TASK_TO_INJECT="$INPUT"
-        echo ">> Generated Branch: $BRANCH_NAME"
-    else
-        # Explicit Branch Name
-        BRANCH_NAME="$INPUT"
-        # Sanitize for folder name (replace / with -)
-        FOLDER_NAME="${INPUT//\//-}"
-        echo ">> Worktree: Explicit Branch '$BRANCH_NAME'"
+    # Determine Folder Name (Sanitize slashes)
+    if [[ -z "$FOLDER_NAME" ]]; then
+        FOLDER_NAME="${BRANCH_NAME//\//-}"
     fi
 
     local WORKTREE_PATH="${WORKTREE_BASE}/${FOLDER_NAME}"
@@ -126,7 +132,6 @@ setup_worktree() {
     # 2. Create Worktree
     if [ -d "$WORKTREE_PATH" ]; then
         echo ">> Worktree already exists at: $WORKTREE_PATH"
-        # We could add validation here to ensure it matches the requested branch
     else
         echo ">> Creating worktree at: $WORKTREE_PATH"
         mkdir -p "$(dirname "$WORKTREE_PATH")"
@@ -145,13 +150,7 @@ setup_worktree() {
     fi
     
     # 3. Update Global PROJECT_DIR to point to worktree
-    # This ensures the main container mounts the worktree instead of the original repo
     PROJECT_DIR="$WORKTREE_PATH"
-    
-    # 4. Inject Task if needed (so the Agent receives it)
-    if [[ -n "$TASK_TO_INJECT" ]]; then
-        ARGS+=("$TASK_TO_INJECT")
-    fi
 }
 
 # 0. Pre-scan for Config & Load Extra Args
@@ -242,14 +241,6 @@ while [[ $# -gt 0 ]]; do
         ;;
     --worktree)
         ENABLE_WORKTREE=true
-        # Optional argument: Check if next arg exists and is NOT a flag
-        # If it's a command/prompt, it will be consumed unless the user uses '--'
-        if [[ -n "$2" && "$2" != -* ]]; then
-            WORKTREE_INPUT="$2"
-            shift
-        else
-            WORKTREE_INPUT=""
-        fi
         shift
         ;;
     --branch)
@@ -358,7 +349,7 @@ fi
 # 2.2.1 Setup Worktree (if requested)
 ORIGINAL_PROJECT_DIR="$PROJECT_DIR"
 if [ "$ENABLE_WORKTREE" = true ]; then
-    setup_worktree "$WORKTREE_INPUT"
+    setup_worktree
 fi
 
 # 2.3 Handle Explicit Update
@@ -522,29 +513,30 @@ DOCKER_ARGS=(
   fi
 
   DOCKER_ARGS+=(
-  --volume "${HOST_CONF_DIR}:/home/gemini/.gemini"
-  # Shared Host Caches (Performance & Convenience)
-  --volume "${HOME}/.m2:/home/gemini/.m2"
-  --volume "${HOME}/.gradle:/home/gemini/.gradle"
-  --volume "${HOME}/.sbt:/home/gemini/.sbt"
-  --volume "${HOME}/.ivy2:/home/gemini/.ivy2"
-  --volume "${HOME}/.cache/coursier:/home/gemini/.cache/coursier"
-  --volume "${HOME}/go/pkg/mod:/home/gemini/go/pkg/mod"
-  --volume "${HOME}/.cache/go-build:/home/gemini/.cache/go-build"
-  --env DEFAULT_UID="${HOST_UID:-$(id -u)}"
-  --env DEFAULT_GID="${HOST_GID:-$(id -g)}"
-  --env GEMINI_SESSION_ID="${GEMINI_SESSION_ID}"
-  --env GEMINI_PROJECT_NAME="${PROJECT_NAME}"
-  --env GEMINI_SESSION_TYPE="${SESSION_TYPE}"
-  --env TERM="${TERM:-xterm-256color}"
-  --env COLORTERM
-  --env LANG
-  --env LC_ALL
-  --env HTTP_PROXY --env HTTPS_PROXY --env NO_PROXY
-  --env http_proxy --env https_proxy --env no_proxy
-  --workdir "${PROJECT_DIR}"
-  "${EXTRA_DOCKER_ARGS[@]}"
-)
+    --volume "${HOST_CONF_DIR}:/home/gemini/.gemini"
+    # Shared Host Caches (Performance & Convenience)
+    --volume "${HOME}/.m2:/home/gemini/.m2"
+    --volume "${HOME}/.gradle:/home/gemini/.gradle"
+    --volume "${HOME}/.sbt:/home/gemini/.sbt"
+    --volume "${HOME}/.ivy2:/home/gemini/.ivy2"
+    --volume "${HOME}/.cache/coursier:/home/gemini/.cache/coursier"
+    --volume "${HOME}/go/pkg/mod:/home/gemini/go/pkg/mod"
+    --volume "${HOME}/.cache/go-build:/home/gemini/.cache/go-build"
+    --env DEFAULT_UID="${HOST_UID:-$(id -u)}"
+    --env DEFAULT_GID="${HOST_GID:-$(id -g)}"
+    --env GEMINI_SESSION_ID="${GEMINI_SESSION_ID}"
+    --env GEMINI_PROJECT_NAME="${PROJECT_NAME}"
+    --env GEMINI_SESSION_TYPE="${SESSION_TYPE}"
+    --env TERM="${TERM:-xterm-256color}"
+    --env COLORTERM
+    --env LANG
+    --env LC_ALL
+    --env HTTP_PROXY --env HTTPS_PROXY --env NO_PROXY
+    --env http_proxy --env https_proxy --env no_proxy
+    --workdir "${PROJECT_DIR}"
+    "${EXTRA_DOCKER_ARGS[@]}"
+  )
+
 
 # Conditionally Add Docker Support
 if [ "$ENABLE_DOCKER" = true ]; then
