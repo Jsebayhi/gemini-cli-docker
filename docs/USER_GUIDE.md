@@ -121,3 +121,18 @@ The toolbox automatically:
 3.  Launches the agent in that clean environment.
 
 Your main working directory remains untouched. If the experiment fails, just delete the branch. If it succeeds, merge it back.
+
+---
+
+## 11. Multi-Session Isolation (Collaboration)
+**The Scenario:** You are working on a complex feature in a worktree and you want to have one agent running a long-task (e.g., writing tests) in the background while you have an interactive chat in another terminal to discuss architectural choices.
+
+**The Solution:** Launch a second session in the same worktree.
+```bash
+# Terminal 1: Background task
+gemini-toolbox --worktree my-feature "Write exhaustive unit tests for app/services" &
+
+# Terminal 2: Interactive session in the SAME worktree
+gemini-toolbox --worktree my-feature chat
+```
+Because the toolbox detects that the worktree `my-feature` already exists, it simply joins the existing isolated environment without creating new branches. This allows for powerful human-agent or agent-agent collaboration in a single, clean workspace.
