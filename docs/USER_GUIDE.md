@@ -133,6 +133,6 @@ Your main working directory remains untouched. If the experiment fails, just del
 gemini-toolbox --worktree my-feature "Write exhaustive unit tests for app/services" &
 
 # Terminal 2: Interactive session in the SAME worktree
-gemini-toolbox --worktree my-feature chat
+gemini-toolbox --worktree my-feature
 ```
 Because the toolbox detects that the worktree `my-feature` already exists, it simply joins the existing isolated environment without creating new branches. This allows for powerful human-agent or agent-agent collaboration in a single, clean workspace.

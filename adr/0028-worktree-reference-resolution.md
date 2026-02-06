@@ -36,7 +36,7 @@ To avoid maintaining brittle keyword lists, the parser uses a "strongest signal"
 
 *   **Explicit Context:** `gemini-toolbox --worktree --branch feat/ui "Fix buttons"` -> Uses `feat/ui`.
 *   **Manual Naming:** `gemini-toolbox --worktree fix-auth "Refactor login"` -> Creates `fix-auth` branch, passes task to agent.
-*   **Resume Work:** `gemini-toolbox --worktree fix-auth chat` -> Detects `fix-auth` exists, enters it, and starts chat.
+*   **Resume Work:** `gemini-toolbox --worktree fix-auth` -> Detects `fix-auth` exists, enters it, and starts an interactive session.
 *   **Multi-Session Collaboration:** `gemini-toolbox --worktree fix-auth` (in two different terminals) -> Both sessions share the same `fix-auth` worktree, allowing for concurrent agent/human collaboration in the same isolated environment.
 *   **Safe Exploration:** `gemini-toolbox --worktree` -> Creates a detached HEAD worktree.
 
