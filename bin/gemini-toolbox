@@ -152,6 +152,11 @@ setup_worktree() {
     
     # 3. Update Global PROJECT_DIR to point to worktree
     PROJECT_DIR="$WORKTREE_PATH"
+
+    # 4. Inject Task if needed (so the Agent receives it)
+    if [[ -n "$TASK_STRING" ]]; then
+        ARGS+=("$TASK_STRING")
+    fi
 }
 
 # 0. Pre-scan for Config & Load Extra Args
