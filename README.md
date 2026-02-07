@@ -3,6 +3,8 @@
 [![CI](https://github.com/Jsebayhi/gemini-cli-toolbox/actions/workflows/ci.yml/badge.svg)](https://github.com/Jsebayhi/gemini-cli-toolbox/actions)
 [![Docker Pulls](https://img.shields.io/docker/pulls/jsebayhi/gemini-cli-toolbox)](https://hub.docker.com/r/jsebayhi/gemini-cli-toolbox)
 
+**[GitHub](https://github.com/Jsebayhi/gemini-cli-toolbox) | [Docker Hub](https://hub.docker.com/r/jsebayhi/gemini-cli-toolbox)**
+
 > **The zero-config, ultra-secure home for your Gemini AI agent.**
 > Run the Gemini CLI in a Dockerized sandbox that keeps your host system clean while staying fully integrated with your tools (VS Code, Docker, VPN, git worktree).
 
