@@ -43,7 +43,7 @@ You **MUST** follow this cycle for every task. No exceptions.
 2.  **Mandatory ADR:** You **MUST** commit a formal ADR file (`adr/NNNN-name.md`) explaining the architecture, unless the change is a trivial fix or chore.
 3.  **Conventions:**
     *   **Naming:** Strictly follow `gem-{PROJECT}-{TYPE}-{ID}`.
-    *   **Docs:** Update `GEMINI.md` and `README.md` **simultaneously** with code.
+    *   **Docs:** Update `GEMINI.md`, `README.md`, `USER_GUIDE.md`, and `MAINTENANCE_JOURNEYS.md` **simultaneously** with code.
     *   **Env Vars:** Use `GEMINI_TOOLBOX_*` or `GEMINI_HUB_*` prefixes.
 
 ### Phase 3: Validation (Mandatory)
