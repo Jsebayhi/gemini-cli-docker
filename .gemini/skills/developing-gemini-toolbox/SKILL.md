@@ -1,5 +1,5 @@
 ---
-name: gemini-toolbox-dev
+name: developing-gemini-toolbox
 description: Develops and maintains the Gemini CLI Toolbox. Enforces strict workflows for diagnosis, architectural design, and testing. Use when modifying the codebase, fixing bugs, or adding features.
 ---
 
