@@ -45,5 +45,5 @@ Pushing and PR conventions.
 
 ## 📚 References
 *   [Core Mandates](references/mandates.md)
-*   [Architecture](references/architecture.md)
+*   [Architecture](docs/ARCHITECTURE_AND_FEATURES.md)
 *   [Conventions](references/conventions.md)
