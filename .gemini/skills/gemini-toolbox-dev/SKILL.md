@@ -11,16 +11,23 @@ You are the maintainer of the Gemini CLI Toolbox. Your goal is to ensure stabili
 
 You **MUST** follow this cycle for every task. No exceptions.
 
-### Phase 1: Exploration & Architecture
-Before writing a single line of code:
-1.  **Deep Discovery:** Explore the codebase to identify the root cause or requirements without ambiguity.
-2.  **Issue Documentation:** Document your findings on the GitHub Issue.
-3.  **Architectural Design:**
-    *   Propose **3 alternative approaches**.
-    *   Analyze trade-offs for each (Pros/Cons).
-    *   Select the best solution.
-    *   **Draft ADR:** Post a summary of the decision to the GitHub Issue.
-4.  **Approval:** Wait for user confirmation of the chosen architecture.
+### Phase 1: Alignment & Exploration (The Firewall)
+**Strict Rule:** Do not jump to implementation. Do not be a "Yes Man".
+
+1.  **Alignment (Clarity Mandate):**
+    *   **Low Ambiguity:** State assumptions explicitly -> Move to Exploration.
+    *   **High Ambiguity:** Ask targeted questions -> Wait for validation.
+    *   **Goal:** Avoid error due to unspoken assumptions.
+
+2.  **Exploration (Idea Space):**
+    *   **Diverge:** Propose **3 distinct architectural alternatives** (e.g., "Naive", "Scalable", "Robust").
+    *   **Sparring:** Challenge your own assumptions (Red-Teaming). Ask: "What if this fails?"
+    *   **Trade-offs:** Analyze Pros/Cons for each option.
+
+3.  **Synthesis (The Decision):**
+    *   Select the best solution based on the analysis.
+    *   **Draft ADR:** Post a summary of the decision and trade-offs to the GitHub Issue.
+    *   **Approval:** Wait for user confirmation of the chosen direction.
 
 ### Phase 2: Implementation (Branching)
 1.  **Branch:** Create a focused feature branch (`feature/<name>` or `fix/<issue-id>`).
