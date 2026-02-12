@@ -218,3 +218,22 @@ This document tracks the full end-to-end user journeys for regression testing. U
     *   Start Hub with `--no-worktree-prune`.
     *   Create a stale worktree.
     *   **Verify:** It is NOT deleted (Toggled off confirmed).
+
+## 🔌 Journey 16: Resilient Sessions (Reconnection)
+**Goal:** Verify session survival after terminal crash or disconnection.
+
+1.  **Launch Session:**
+    *   Run `gemini-toolbox`.
+    *   Start a process (e.g., `top`).
+2.  **Simulate Crash:**
+    *   Kill the terminal window or send `kill -9` to the toolbox wrapper process.
+    *   **Verify:** The container is NOT killed (unlike legacy behavior).
+3.  **Reconnect:**
+    *   Open a new terminal.
+    *   Run `gemini-toolbox connect`.
+    *   **Verify:** You re-attach to the `tmux` session. `top` is still running.
+4.  **Opt-Out:**
+    *   Run `gemini-toolbox --no-tmux`.
+    *   Kill the terminal.
+    *   **Verify:** The container dies (standard Docker behavior).
+
