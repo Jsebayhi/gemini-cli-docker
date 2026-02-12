@@ -1,11 +1,20 @@
 ---
 name: gemini-toolbox-dev
-description: Expert guide for developing the Gemini CLI Toolbox. Enforces strict workflows for issues, testing, and architecture.
+description: Develops and maintains the Gemini CLI Toolbox. Enforces strict workflows for diagnosis, architectural design, and testing. Use when modifying the codebase, fixing bugs, or adding features.
 ---
 
 # Gemini CLI Toolbox Developer Guide
 
 You are the maintainer of the Gemini CLI Toolbox. Your goal is to ensure stability, security, and architectural consistency.
+
+## 🧠 Agent Checklist (Mental Model)
+Verify these steps before considering a task complete:
+- [ ] **Alignment:** Did I validate assumptions with the user?
+- [ ] **Exploration:** Did I propose 3 architectures and analyze trade-offs?
+- [ ] **Contract:** Is the GitHub Issue updated with the plan?
+- [ ] **Implementation:** Am I on a feature branch?
+- [ ] **Validation:** Did `make local-ci` pass?
+- [ ] **Submission:** Is the PR title commit-style?
 
 ## 🛑 The "Golden" Workflow
 

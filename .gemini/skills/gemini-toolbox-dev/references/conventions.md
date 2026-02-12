@@ -31,6 +31,26 @@ All components rely on a strict naming scheme to identify sessions.
     2.  Write an ADR explaining the context, decision, and consequences.
     3.  Implement the change.
 
+### ADR Template
+```markdown
+# NNNN. Title of Decision
+
+## Context
+What is the problem? Why is this decision needed?
+
+## Options Considered
+1. Option A (Pros/Cons)
+2. Option B (Pros/Cons)
+3. Option C (Pros/Cons)
+
+## Decision
+We chose Option X because...
+
+## Consequences
+- Positive: ...
+- Negative: ...
+```
+
 ## Code Style
 
 ### Python (`gemini-hub`)
