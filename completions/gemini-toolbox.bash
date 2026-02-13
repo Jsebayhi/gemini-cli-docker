@@ -14,13 +14,19 @@ _gemini_toolbox_completions() {
             return 0
             ;;
         --profile)
-            # Suggest from ~/.gemini-profiles if it exists
-            local profile_dir="${HOME}/.gemini-profiles"
-            if [ -d "$profile_dir" ]; then
-                local profiles
-                profiles=$(ls "${profile_dir}")
-                COMPREPLY=( $(compgen -W "${profiles}" -- "${cur}") )
-            fi
+            # Suggest from standard locations
+            local xdg_conf_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+            local search_dirs=(
+                "${xdg_conf_home}/gemini-toolbox/profiles"
+                "${HOME}/.gemini-profiles"
+            )
+            local profiles=""
+            for dir in "${search_dirs[@]}"; do
+                if [ -d "$dir" ]; then
+                    profiles="${profiles} $(ls "${dir}")"
+                fi
+            done
+            COMPREPLY=( $(compgen -W "${profiles}" -- "${cur}") )
             # Always allow directory completion as fallback/override
             COMPREPLY+=( $(compgen -d -- "${cur}") )
             return 0

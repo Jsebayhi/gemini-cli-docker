@@ -24,10 +24,21 @@ AUTH_KEY="${GEMINI_REMOTE_KEY:-}"
 WORKSPACE_ROOTS=()
 CONFIG_ROOT="${HOME}/.gemini/configs"
 
-# Auto-detect config root fallback
-if [ ! -d "$CONFIG_ROOT" ] && [ -d "${HOME}/.gemini-profiles" ]; then
-    CONFIG_ROOT="${HOME}/.gemini-profiles"
-fi
+# Auto-detect config root fallback (ordered by preference)
+XDG_CONF_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+SEARCH_PATHS=(
+    "${XDG_CONF_HOME}/gemini-toolbox/profiles"
+    "${XDG_CONF_HOME}/gemini-toolbox/configs"
+    "${HOME}/.gemini/configs"
+    "${HOME}/.gemini-profiles"
+)
+
+for path in "${SEARCH_PATHS[@]}"; do
+    if [ -d "$path" ]; then
+        CONFIG_ROOT="$path"
+        break
+    fi
+done
 
 # 1. Pre-scan for Override Image
 OVERRIDE_IMAGE=""
