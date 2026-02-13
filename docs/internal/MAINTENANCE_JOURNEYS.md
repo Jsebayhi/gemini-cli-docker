@@ -198,6 +198,26 @@ This document tracks the full end-to-end user journeys for regression testing. U
     *   Inside the session, run `git commit --allow-empty -m "test"`.
     *   **Verify:** Command succeeds because the `.git` directory is mounted `:rw`.
 
+## 🌳 Journey 17: Worktree Resumption & Parent Detection
+**Goal:** Verify Git connectivity when launching sessions directly from worktree folders.
+
+1.  **Preparation:**
+    *   Create a worktree: `gemini-toolbox --worktree --name journey-17`.
+    *   Exit the session.
+2.  **Resume Directly:**
+    *   Navigate into the worktree cache: `cd ~/.cache/gemini-toolbox/worktrees/{project}/journey-17`.
+    *   Launch a bash session WITHOUT flags: `gemini-toolbox --bash`.
+3.  **Verify Git:**
+    *   Inside the container, run `git status`.
+    *   **Verify:** Command succeeds (Detection logic correctly mounted the parent repo).
+    *   Run `git log -n 1`.
+    *   **Verify:** History is accessible.
+4.  **Verify RO Protection:**
+    *   Try to touch a file in the parent repo (e.g., `touch ../../README.md`).
+    *   **Verify:** Fails with `Read-only file system` (Surgical Mount integrity maintained).
+
+---
+
 ## 🧹 Journey 15: Worktree Pruning & Lifecycle
 **Goal:** Verify the Hub's background cleanup service and retention tiers.
 

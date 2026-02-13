@@ -513,13 +513,28 @@ DOCKER_ARGS=(
   )
 
   # --- Parent Repo Mounting Strategy ---
-  # Only mount parent if we are in a worktree (PROJECT_DIR != ORIGINAL_PROJECT_DIR)
+  # We need the parent repo for Git history/objects if we are in a worktree.
+  # 1. Check if we just created a worktree via --worktree (PROJECT_DIR != ORIGINAL_PROJECT_DIR)
+  # 2. Check if we are ALREADY in a worktree (even if --worktree wasn't passed)
+  MAIN_REPO_ROOT=""
   if [ "$PROJECT_DIR" != "$ORIGINAL_PROJECT_DIR" ]; then
-      # We need the parent repo for Git history/objects.
+      MAIN_REPO_ROOT="$ORIGINAL_PROJECT_DIR"
+  elif command -v git >/dev/null 2>&1 && git -C "$PROJECT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      # Check if .git is a file (indicates a worktree)
+      TOPLEVEL=$(git -C "$PROJECT_DIR" rev-parse --show-toplevel 2>/dev/null)
+      if [ -f "${TOPLEVEL}/.git" ]; then
+          COMMON_DIR=$(git -C "$PROJECT_DIR" rev-parse --git-common-dir 2>/dev/null)
+          if [ -n "$COMMON_DIR" ]; then
+              MAIN_REPO_ROOT=$(dirname "$COMMON_DIR")
+          fi
+      fi
+  fi
+
+  if [ -n "$MAIN_REPO_ROOT" ]; then
       # We mount Parent :ro for security, but .git :rw for Git functionality.
       DOCKER_ARGS+=(
-          --volume "${ORIGINAL_PROJECT_DIR}:${ORIGINAL_PROJECT_DIR}:ro"
-          --volume "${ORIGINAL_PROJECT_DIR}/.git:${ORIGINAL_PROJECT_DIR}/.git"
+          --volume "${MAIN_REPO_ROOT}:${MAIN_REPO_ROOT}:ro"
+          --volume "${MAIN_REPO_ROOT}/.git:${MAIN_REPO_ROOT}/.git"
       )
   fi
 
