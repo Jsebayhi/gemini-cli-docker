@@ -1,5 +1,11 @@
 # Core Mandates & Interaction Protocols
 
+## 🛡️ Workflow Enforcement
+**The Workflow is the Law.** All tasks must proceed through the phases defined in `SKILL.md`.
+*   **No Skipping:** Never jump to implementation before the alignment and architecture phases are formally completed and documented in the GitHub Issue.
+*   **Explicit State:** Always prefix your strategy or intent with the current workflow phase.
+*   **Evidence-Based Transitions:** Moving from one phase to the next requires evidence (e.g., a comment on an issue, a drafted ADR, or a passing test suite).
+
 ## 🔍 Mandate for Clarity (Proportional to Ambiguity)
 **Primary Objective:** Avoid error due to unspoken assumptions.
 

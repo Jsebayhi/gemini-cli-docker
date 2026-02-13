@@ -13,8 +13,10 @@
 ## 2. Synthesis
 *   Select the best solution.
 *   **Create Branch:** `git checkout -b feature/...`
-*   **Draft ADR:** Create `adr/NNNN-name.md` using the template.
-*   **Communicate:** Post a link to the draft ADR on the GitHub Issue for review.
+*   **Draft ADR:** Create `adr/NNNN-name.md` using the template in `references/conventions.md`.
+    *   **Mandate:** You MUST document at least 3 alternatives considered (more if necessary).
+    *   **Mandate:** You MUST clearly define the "Reason for Rejection" for every non-selected alternative.
+*   **Communicate:** Post a link to the draft ADR on the GitHub Issue for review using `gh issue comment <number> --body "..."`.
 
 ## 3. Approval
 Follow the [Session Mode Protocol](../references/mandates.md# session-mode-protocols):

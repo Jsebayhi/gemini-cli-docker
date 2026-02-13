@@ -1,4 +1,4 @@
-# Phase 4: Submission
+# Phase 5: Submission
 
 **Goal:** Merge the changes cleanly.
 
@@ -9,6 +9,8 @@ git push origin <branch>
 
 ## 2. Pull Request (Commit-Style)
 Create the PR using a title and body that follow commit message best practices. The PR will be squashed; the title and body **will become** the final commit.
+
+**Note:** You MUST use the GitHub CLI (`gh`) for this. Do not use the web UI or other tools.
 
 *   **Format:** `type(scope): description`
 *   **Body:** Detail *why* the change was made. Link the issue.
