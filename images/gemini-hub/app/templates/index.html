@@ -82,6 +82,11 @@
 
         <!-- Step 3: Config -->
         <div id="step-config" class="wizard-step">
+            <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; border-left: 3px solid var(--accent);">
+                <label style="display: block; font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;">Target Project</label>
+                <div id="config-project-path" style="font-family: monospace; font-size: 0.85rem; color: var(--accent); word-break: break-all;"></div>
+            </div>
+
             <div style="display: flex; flex-direction: column; gap: 15px;">
                 <div>
                     <label style="display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px;">Profile Configuration</label>
@@ -99,6 +104,62 @@
                         <option value="cli">Gemini CLI</option>
                         <option value="bash">Bash Shell</option>
                     </select>
+                </div>
+
+                <div style="display: flex; gap: 15px; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px;">Gemini CLI Variant</label>
+                        <select id="image-variant-select" class="filter-select" style="width:100%;" onchange="toggleCustomImageInput()">
+                            <option value="standard">Stable</option>
+                            <option value="preview">Preview (Beta)</option>
+                            <option value="custom">Custom Image</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px;">Toolbox Features</label>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <label class="filter-checkbox" style="font-size:0.8rem; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 4px; display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="docker-check" checked> Docker Integration
+                            </label>
+                            <label class="filter-checkbox" style="font-size:0.8rem; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 4px; display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="ide-check" checked> VS Code Integration
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="custom-image-container" style="display:none; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px;">
+                    <label style="display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px;">Custom Docker Image Name</label>
+                    <input type="text" id="custom-image-input" class="filter-input" style="width:100%; font-size: 0.8rem;" placeholder="e.g. jsebayhi/gemini-cli-toolbox:latest">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 5px;">Isolation Mode</label>
+                    <div style="background: rgba(255,255,255,0.03); padding: 10px; border-radius: 6px;">
+                        <label class="filter-checkbox" style="font-size:0.85rem; margin-bottom: 8px; display: block;">
+                            <input type="checkbox" id="worktree-check" onchange="toggleWorktreeInput()"> Launch in Ephemeral Worktree
+                        </label>
+                        <div id="worktree-options" style="display:none; padding-left: 20px;">
+                            <input type="text" id="worktree-name" class="filter-input" style="width:100%; font-size: 0.8rem;" placeholder="Optional: Branch/Worktree Name">
+                            <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 3px;">
+                                Leave empty for anonymous exploration.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced Options -->
+                <div style="margin-top: 5px;">
+                    <button type="button" onclick="toggleAdvanced()" style="background:none; border:none; color:var(--text-dim); font-size:0.75rem; cursor:pointer; display:flex; align-items:center; gap:5px; padding:0;">
+                        <span id="advanced-chevron">▶</span> Advanced Options
+                    </button>
+                    
+                    <div id="advanced-options" style="display:none; margin-top:10px; padding:10px; background:rgba(255,255,255,0.02); border-radius:6px; border:1px solid rgba(255,255,255,0.05); flex-direction:column; gap:12px;">
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 5px;">Additional Docker Arguments</label>
+                            <textarea id="docker-args-input" class="filter-input" style="width:100%; height: 50px; font-size: 0.75rem; resize: vertical; box-sizing: border-box; font-family:monospace;" placeholder="e.g. -v /host/path:/container/path"></textarea>
+                        </div>
+                    </div>
                 </div>
 
                 <div>

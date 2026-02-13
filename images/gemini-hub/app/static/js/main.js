@@ -218,6 +218,7 @@ function goBackToRoots() { fetchRoots(); }
 function goToBrowse() { showStep('step-browse'); }
 
 async function goToConfig() {
+    document.getElementById('config-project-path').innerText = currentPath;
     const res = await fetch('/api/configs');
     const data = await res.json();
     const select = document.getElementById('config-select');
@@ -237,7 +238,34 @@ async function goToConfig() {
     typeSelect.onchange = toggleTaskInput;
     toggleTaskInput(); // Init state
     
+    // Init Worktree State
+    toggleWorktreeInput();
+    
     showStep('step-config');
+}
+
+function toggleWorktreeInput() {
+    const isChecked = document.getElementById('worktree-check').checked;
+    const optionsDiv = document.getElementById('worktree-options');
+    optionsDiv.style.display = isChecked ? 'block' : 'none';
+}
+
+function toggleCustomImageInput() {
+    const variant = document.getElementById('image-variant-select').value;
+    const container = document.getElementById('custom-image-container');
+    container.style.display = (variant === 'custom') ? 'block' : 'none';
+}
+
+function toggleAdvanced() {
+    const div = document.getElementById('advanced-options');
+    const chevron = document.getElementById('advanced-chevron');
+    if (div.style.display === 'none') {
+        div.style.display = 'flex';
+        chevron.innerText = '▼';
+    } else {
+        div.style.display = 'none';
+        chevron.innerText = '▶';
+    }
 }
 
 function toggleTaskInput() {
@@ -321,6 +349,13 @@ async function doLaunch() {
     const loader = document.getElementById('launch-loader');
     const config = document.getElementById('config-select').value;
     const sessionType = document.getElementById('session-type-select').value;
+    const imageVariant = document.getElementById('image-variant-select').value;
+    const customImage = (imageVariant === 'custom') ? document.getElementById('custom-image-input').value : null;
+    const dockerEnabled = document.getElementById('docker-check').checked;
+    const ideEnabled = document.getElementById('ide-check').checked;
+    const worktreeMode = document.getElementById('worktree-check').checked;
+    const worktreeName = document.getElementById('worktree-name').value;
+    const dockerArgs = document.getElementById('docker-args-input').value;
     const task = document.getElementById('task-input').value;
     const interactive = document.getElementById('interactive-check').checked;
     const results = document.getElementById('launch-results');
@@ -341,6 +376,13 @@ async function doLaunch() {
                 project_path: currentPath,
                 config_profile: config,
                 session_type: sessionType,
+                image_variant: imageVariant,
+                docker_enabled: dockerEnabled,
+                ide_enabled: ideEnabled,
+                worktree_mode: worktreeMode,
+                worktree_name: worktreeName,
+                custom_image: customImage,
+                docker_args: dockerArgs,
                 task: task,
                 interactive: interactive
             })

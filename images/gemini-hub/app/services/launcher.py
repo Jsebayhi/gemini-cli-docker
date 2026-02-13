@@ -10,7 +10,7 @@ class LauncherService:
     """Manages the execution of gemini-toolbox sessions."""
 
     @staticmethod
-    def launch(project_path: str, config_profile: str = None, session_type: str = 'cli', task: str = None, interactive: bool = True) -> Dict[str, str]:
+    def launch(project_path: str, config_profile: str = None, session_type: str = 'cli', task: str = None, interactive: bool = True, image_variant: str = 'standard', docker_enabled: bool = True, worktree_mode: bool = False, worktree_name: str = None, ide_enabled: bool = True, custom_image: str = None, docker_args: str = None) -> Dict[str, str]:
         """Launches gemini-toolbox via subprocess."""
         
         # Security Check
@@ -27,6 +27,25 @@ class LauncherService:
 
         if session_type == 'bash':
             config_args.append("--bash")
+
+        if custom_image:
+            config_args.extend(["--image", custom_image])
+        elif image_variant == 'preview':
+            config_args.append("--preview")
+
+        if not docker_enabled:
+            config_args.append("--no-docker")
+
+        if not ide_enabled:
+            config_args.append("--no-ide")
+
+        if docker_args:
+            config_args.extend(["--docker-args", docker_args])
+
+        if worktree_mode:
+            config_args.append("--worktree")
+            if worktree_name:
+                config_args.extend(["--name", worktree_name])
 
         # Prepare Environment
         env = os.environ.copy()
