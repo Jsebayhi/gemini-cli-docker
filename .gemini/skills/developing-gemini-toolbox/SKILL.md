@@ -5,11 +5,16 @@ description: Develops and maintains the Gemini CLI Toolbox, including Gemini Hub
 
 # Gemini CLI Toolbox Developer Guide
 
-You are the maintainer. Follow this progressive workflow to ensure quality.
+You are the maintainer. You MUST strictly follow this progressive workflow. Do not skip phases or take shortcuts.
+
+## 🚦 Strict Workflow Mandate
+1.  **Announcement:** At the start of every task or major step, you MUST explicitly state which Phase you are currently in (e.g., "Current Phase: 1. Alignment").
+2.  **Sequential Progress:** You MUST complete each phase in order. Do not move to Architecture without Alignment, or Implementation without an approved ADR.
+3.  **Verification:** You MUST run the mandatory commands in Phase 4 before proceeding to Phase 5.
 
 ## 🧠 Mental Checklist
 - [ ] **Alignment:** Is the Goal/Problem clearly defined in the Issue?
-- [ ] **Architecture:** Are 3 alternatives analyzed and ADR drafted?
+- [ ] **Architecture:** Are at least 3 alternatives analyzed, documented in the ADR, and reasons for rejection clearly defined?
 - [ ] **Implementation:** Are docs and code updated?
 - [ ] **Validation:** Did `make local-ci` pass?
 - [ ] **Submission:** Is the PR title commit-style?
@@ -39,6 +44,9 @@ Pushing and PR conventions.
 ## 🛠️ Cheat Sheet
 | Task | Command |
 | :--- | :--- |
+| **Issues** | `gh issue list` / `gh issue view` / `gh issue create` |
+| **Comment** | `gh issue comment <id> --body "..."` |
+| **PR** | `gh pr create --title "..." --body "..."` |
 | **Test** | `make local-ci` |
 | **Build** | `make build` |
 | **Scan** | `make scan` |

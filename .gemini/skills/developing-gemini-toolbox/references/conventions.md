@@ -5,6 +5,12 @@ This project strictly enforces the pattern that documentation (`README.md`, `GEM
 *   **Trigger:** If you change code that affects behavior, you **MUST** update the docs in the same commit (or PR).
 *   **GEMINI.md:** Each component folder has its own `GEMINI.md` capturing specific "gotchas" and workflows.
 
+## GitHub Interaction
+**Rule:** You MUST use the GitHub CLI (`gh`) for all interactions with GitHub (issues, pull requests, etc.).
+*   **Discovery:** Use `gh issue list` and `gh issue view` to understand tasks.
+*   **Communication:** Post comments using `gh issue comment`.
+*   **Submission:** Create PRs using `gh pr create`.
+
 ## Naming Conventions
 👉 **Source of Truth:** See `GEMINI.md` (Root) Section 5: Naming Strategy.
 
@@ -25,4 +31,37 @@ This project strictly enforces the pattern that documentation (`README.md`, `GEM
 
 ```markdown
 # NNNN. Title of Decision
-...
+
+## Status
+Proposed | Accepted | Superseded by [NNNN](link)
+
+## Context
+What is the problem we are solving? What are the constraints?
+
+## Alternatives Considered
+List at least 3 alternatives explored during Phase 2 (include all significant options considered).
+
+### [Alternative Name 1]
+*   **Description:** ...
+*   **Pros/Cons:** ...
+*   **Status:** Rejected
+*   **Reason for Rejection:** Clearly define why this was not selected.
+
+### [Alternative Name 2]
+*   **Description:** ...
+*   **Pros/Cons:** ...
+*   **Status:** Rejected
+*   **Reason for Rejection:** Clearly define why this was not selected.
+
+### [Alternative Name N (Selected)]
+*   **Description:** ...
+*   **Pros/Cons:** ...
+*   **Status:** Selected
+*   **Reason for Selection:** Why is this the best choice?
+
+## Decision
+What is the final decision?
+
+## Consequences
+What are the positive and negative consequences of this decision?
+```
