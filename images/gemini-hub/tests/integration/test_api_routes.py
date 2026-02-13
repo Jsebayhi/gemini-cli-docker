@@ -138,7 +138,7 @@ def test_launch_with_task_api(client):
         assert "do something autonomous" in cmd
 
 def test_launch_full_options(client):
-    """Test launch with all parity options (preview + no-docker + worktree)."""
+    """Test launch with all parity options (preview + no-docker + worktree + custom image + docker args)."""
     with patch("subprocess.run") as mock_run:
         mock_run.return_value.returncode = 0
         mock_run.return_value.stdout = ">> Container started"
@@ -150,7 +150,10 @@ def test_launch_full_options(client):
             "docker_enabled": False,
             "ide_enabled": False,
             "worktree_mode": True,
-            "worktree_name": "feat/api"
+            "worktree_name": "feat/api",
+            "custom_image": "my-custom-image:latest",
+            "docker_args": "-v /data:/data",
+            "no_tmux": True
         }
         
         response = client.post('/api/launch', json=payload)
@@ -161,12 +164,19 @@ def test_launch_full_options(client):
         # Verify call args
         args, _ = mock_run.call_args
         cmd = args[0]
-        assert "--preview" in cmd
+        # custom_image overrides preview
+        assert "--image" in cmd
+        assert "my-custom-image:latest" in cmd
+        assert "--preview" not in cmd
+        
         assert "--no-docker" in cmd
         assert "--no-ide" in cmd
         assert "--worktree" in cmd
         assert "--name" in cmd
         assert "feat/api" in cmd
+        assert "--docker-args" in cmd
+        assert "-v /data:/data" in cmd
+        assert "--no-tmux" in cmd
 
 def test_launch_failure_permission(client):
     """Test launch rejection for unauthorized path."""

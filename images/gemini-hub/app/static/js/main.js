@@ -249,6 +249,18 @@ function toggleWorktreeInput() {
     optionsDiv.style.display = isChecked ? 'block' : 'none';
 }
 
+function toggleAdvanced() {
+    const div = document.getElementById('advanced-options');
+    const chevron = document.getElementById('advanced-chevron');
+    if (div.style.display === 'none') {
+        div.style.display = 'flex';
+        chevron.innerText = '▼';
+    } else {
+        div.style.display = 'none';
+        chevron.innerText = '▶';
+    }
+}
+
 function toggleTaskInput() {
     const type = document.getElementById('session-type-select').value;
     const taskContainer = document.getElementById('task-input').parentElement.parentElement; // The div wrapping label+checkbox and textarea
@@ -335,6 +347,9 @@ async function doLaunch() {
     const ideEnabled = document.getElementById('ide-check').checked;
     const worktreeMode = document.getElementById('worktree-check').checked;
     const worktreeName = document.getElementById('worktree-name').value;
+    const customImage = document.getElementById('custom-image-input').value;
+    const dockerArgs = document.getElementById('docker-args-input').value;
+    const noTmux = document.getElementById('no-tmux-check').checked;
     const task = document.getElementById('task-input').value;
     const interactive = document.getElementById('interactive-check').checked;
     const results = document.getElementById('launch-results');
@@ -360,6 +375,9 @@ async function doLaunch() {
                 ide_enabled: ideEnabled,
                 worktree_mode: worktreeMode,
                 worktree_name: worktreeName,
+                custom_image: customImage,
+                docker_args: dockerArgs,
+                no_tmux: noTmux,
                 task: task,
                 interactive: interactive
             })
