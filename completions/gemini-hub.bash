@@ -14,11 +14,10 @@ _gemini_hub_completions() {
             return 0
             ;;
         --config-root)
-            # Suggest from standard config and profile locations
+            # Suggest absolute paths from standard profile locations
             local xdg_conf_home="${XDG_CONFIG_HOME:-$HOME/.config}"
             local search_dirs=(
                 "${xdg_conf_home}/gemini-toolbox/profiles"
-                "${xdg_conf_home}/gemini-toolbox/configs"
                 "${HOME}/.gemini-profiles"
             )
             local paths=""

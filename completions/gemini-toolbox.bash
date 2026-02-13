@@ -19,7 +19,7 @@ _gemini_toolbox_completions() {
             return 0
             ;;
         --profile)
-            # Suggest from standard profile locations
+            # Suggest absolute paths from standard profile locations
             local xdg_conf_home="${XDG_CONFIG_HOME:-$HOME/.config}"
             local search_dirs=(
                 "${xdg_conf_home}/gemini-toolbox/profiles"
@@ -28,7 +28,12 @@ _gemini_toolbox_completions() {
             local profiles=""
             for dir in "${search_dirs[@]}"; do
                 if [ -d "$dir" ]; then
-                    profiles="${profiles} $(ls "${dir}")"
+                    # Get full absolute paths
+                    for p in "${dir}"/*; do
+                        if [ -d "$p" ]; then
+                            profiles="${profiles} ${p}"
+                        fi
+                    done
                 fi
             done
             COMPREPLY=( $(compgen -W "${profiles}" -- "${cur}") )
