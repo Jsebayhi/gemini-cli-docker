@@ -21,7 +21,10 @@ To maintain a clean user interface while providing advanced control, we will int
 
 #### UI Components:
 - **Toggle/Collapse**: An "Advanced Options" chevron or button to reveal/hide the additional settings.
-- **Custom Image Input**: A text field to specify an image name. This will take precedence over the "Image Variant" selection if provided.
+- **Gemini CLI Variant Selection**: A dropdown to choose between:
+    - **Stable**: Standard image (Default).
+    - **Preview**: Beta image (`--preview`).
+    - **Custom**: Reveals a text input to specify a custom Docker image name (`--image`).
 - **Additional Docker Args Input**: A text area for specifying raw arguments like `-v /host:/container`.
 
 ### 3. Argument Mapping Logic

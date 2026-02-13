@@ -249,6 +249,12 @@ function toggleWorktreeInput() {
     optionsDiv.style.display = isChecked ? 'block' : 'none';
 }
 
+function toggleCustomImageInput() {
+    const variant = document.getElementById('image-variant-select').value;
+    const container = document.getElementById('custom-image-container');
+    container.style.display = (variant === 'custom') ? 'block' : 'none';
+}
+
 function toggleAdvanced() {
     const div = document.getElementById('advanced-options');
     const chevron = document.getElementById('advanced-chevron');
@@ -343,11 +349,11 @@ async function doLaunch() {
     const config = document.getElementById('config-select').value;
     const sessionType = document.getElementById('session-type-select').value;
     const imageVariant = document.getElementById('image-variant-select').value;
+    const customImage = (imageVariant === 'custom') ? document.getElementById('custom-image-input').value : null;
     const dockerEnabled = document.getElementById('docker-check').checked;
     const ideEnabled = document.getElementById('ide-check').checked;
     const worktreeMode = document.getElementById('worktree-check').checked;
     const worktreeName = document.getElementById('worktree-name').value;
-    const customImage = document.getElementById('custom-image-input').value;
     const dockerArgs = document.getElementById('docker-args-input').value;
     const task = document.getElementById('task-input').value;
     const interactive = document.getElementById('interactive-check').checked;
