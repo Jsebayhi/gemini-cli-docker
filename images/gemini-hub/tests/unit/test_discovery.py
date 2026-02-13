@@ -2,21 +2,56 @@ import pytest
 from unittest.mock import patch, MagicMock
 from app.services.discovery import DiscoveryService
 
-def test_get_local_containers():
-    mock_ps_output = "gem-proj-cli-uid1|127.0.0.1:32768->3000/tcp|Up 5 minutes\ngem-proj2-bash-uid2|127.0.0.1:32769->3000/tcp|Up 10 minutes"
+def test_get_local_containers_failures():
+    with patch("subprocess.run") as mock_run:
+        # 1. Command failure
+        mock_run.return_value = MagicMock(returncode=1)
+        assert DiscoveryService.get_local_containers() == []
+        
+        # 2. Exception
+        mock_run.side_effect = Exception("Boom")
+        assert DiscoveryService.get_local_containers() == []
+
+def test_get_local_containers_edge_cases():
+    # 1. Line without pipe
+    # 2. Non-gem container
+    # 3. Malformed ports (no colon)
+    # 4. Short hostname (gem-proj-uid)
+    mock_ps_output = "malformed_line\nnon-gem-container|80->80/tcp|Up\ngem-proj-uid|80->3000/tcp|Up\ngem-valid-cli-uid|malformed_ports|Up"
     
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0, stdout=mock_ps_output)
-        
         containers = DiscoveryService.get_local_containers()
-        
         assert len(containers) == 2
-        assert containers[0]["name"] == "gem-proj-cli-uid1"
-        assert containers[0]["local_url"] == "http://localhost:32768"
-        assert containers[1]["project"] == "proj2"
-        assert containers[1]["type"] == "bash"
+        
+        # Check short hostname parsing (len parts == 3)
+        c_short = next(c for c in containers if c["name"] == "gem-proj-uid")
+        assert c_short["project"] == "proj"
+        assert c_short["type"] == "cli"
+        assert c_short["local_url"] is None # No colon in "80"
 
-def test_parse_peers_unified():
+def test_get_status_failures():
+    with patch("subprocess.run") as mock_run:
+        # 1. Command failure
+        mock_run.return_value = MagicMock(returncode=1)
+        assert DiscoveryService.get_status() == {}
+        
+        # 2. Exception
+        mock_run.side_effect = Exception("Boom")
+        assert DiscoveryService.get_status() == {}
+
+def test_parse_peers_remote_types():
+    # Test remote session with 4 parts in name
+    mock_ts_status = {
+        "Peer": {
+            "node": {"HostName": "gem-my-proj-bash-uid", "TailscaleIPs": ["100.64.0.1"], "Online": True}
+        }
+    }
+    with patch.object(DiscoveryService, "get_local_containers", return_value=[]):
+        machines = DiscoveryService.parse_peers(mock_ts_status)
+        assert len(machines) == 1
+        assert machines[0]["project"] == "my-proj"
+        assert machines[0]["type"] == "bash"
     # 1 local container (also in Tailscale)
     # 1 remote peer (only in Tailscale)
     # 1 local container (not in Tailscale)
