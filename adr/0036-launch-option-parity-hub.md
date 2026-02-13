@@ -4,16 +4,17 @@
 Proposed
 
 ## Context
-The Gemini Hub Web UI currently supports a subset of the configuration options available in the `gemini-toolbox` CLI. While some options like `image_variant` (preview), `docker_enabled`, `ide_enabled`, and `worktree_mode` have been partially implemented in the `issue-15` branch, users still lack control over other critical flags such as overriding the Docker image (`--image`), passing custom Docker arguments (`--docker-args`), and disabling TMUX multiplexing (`--no-tmux`).
+The Gemini Hub Web UI currently supports a subset of the configuration options available in the `gemini-toolbox` CLI. While some options like `image_variant` (preview), `docker_enabled`, `ide_enabled`, and `worktree_mode` have been partially implemented in the `issue-15` branch, users still lack control over other critical flags such as overriding the Docker image (`--image`) and passing custom Docker arguments (`--docker-args`).
+
+Note: Some CLI flags like `--no-tmux` are intentionally excluded from the Hub UI because they are incompatible with the `--remote` mode required for the Hub's web terminal access.
 
 ## Decision
-We will enhance the Gemini Hub launch wizard and backend to support the full range of CLI options, completing the partial implementation.
+We will enhance the Gemini Hub launch wizard and backend to support the relevant CLI options, completing the partial implementation.
 
 ### 1. Backend Enhancements
 The `LauncherService` in the `gemini-hub` component will be updated to accept and process the following additional parameters:
 - `custom_image`: Allows overriding the default Docker image (maps to `--image`).
 - `docker_args`: Allows passing raw arguments to `docker run` (maps to `--docker-args`).
-- `no_tmux`: Allows disabling automatic TMUX multiplexing (maps to `--no-tmux`).
 
 ### 2. Frontend Enhancements (UI/UX)
 To maintain a clean user interface while providing advanced control, we will introduce an **"Advanced Options"** section in the launch wizard. This section will be collapsed by default.
@@ -22,7 +23,6 @@ To maintain a clean user interface while providing advanced control, we will int
 - **Toggle/Collapse**: An "Advanced Options" chevron or button to reveal/hide the additional settings.
 - **Custom Image Input**: A text field to specify an image name. This will take precedence over the "Image Variant" selection if provided.
 - **Additional Docker Args Input**: A text area for specifying raw arguments like `-v /host:/container`.
-- **Disable TMUX Checkbox**: A checkbox to enable `--no-tmux` mode.
 
 ### 3. Argument Mapping Logic
 The Hub will continue to follow the CLI's logic for argument precedence:

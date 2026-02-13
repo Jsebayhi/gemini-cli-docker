@@ -152,8 +152,7 @@ def test_launch_full_options(client):
             "worktree_mode": True,
             "worktree_name": "feat/api",
             "custom_image": "my-custom-image:latest",
-            "docker_args": "-v /data:/data",
-            "no_tmux": True
+            "docker_args": "-v /data:/data"
         }
         
         response = client.post('/api/launch', json=payload)
@@ -176,7 +175,6 @@ def test_launch_full_options(client):
         assert "feat/api" in cmd
         assert "--docker-args" in cmd
         assert "-v /data:/data" in cmd
-        assert "--no-tmux" in cmd
 
 def test_launch_failure_permission(client):
     """Test launch rejection for unauthorized path."""

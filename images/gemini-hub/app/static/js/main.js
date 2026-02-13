@@ -349,7 +349,6 @@ async function doLaunch() {
     const worktreeName = document.getElementById('worktree-name').value;
     const customImage = document.getElementById('custom-image-input').value;
     const dockerArgs = document.getElementById('docker-args-input').value;
-    const noTmux = document.getElementById('no-tmux-check').checked;
     const task = document.getElementById('task-input').value;
     const interactive = document.getElementById('interactive-check').checked;
     const results = document.getElementById('launch-results');
@@ -377,7 +376,6 @@ async function doLaunch() {
                 worktree_name: worktreeName,
                 custom_image: customImage,
                 docker_args: dockerArgs,
-                no_tmux: noTmux,
                 task: task,
                 interactive: interactive
             })
