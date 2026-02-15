@@ -26,11 +26,10 @@ main() {
     log_info()  { _log 2 "$@"; }
     log_debug() { _log 3 "$@"; }
 
-    # 1. Start Tailscale Daemon (Userspace Networking)
-    # --tun=userspace-networking: Avoids needing /dev/net/tun device (sometimes)
+    # 1. Start Tailscale Daemon (Kernel TUN Mode)
     # --statedir: Mapped to named volume (/var/lib/tailscale) to persist Device ID
     log_info "Starting Tailscaled..."
-    tailscaled --tun=userspace-networking --statedir=/var/lib/tailscale &
+    tailscaled --statedir=/var/lib/tailscale &
     sleep 3
 
     # 2. Authenticate
