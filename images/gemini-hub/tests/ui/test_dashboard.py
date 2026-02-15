@@ -225,3 +225,33 @@ def test_session_stop_lifecycle(page: Page, live_server_url):
         # The card should have opacity 0.5
         card = page.locator(".card", has_text="stop-me")
         expect(card).to_have_css("opacity", "0.5")
+
+def test_wizard_recent_paths_persistence(page: Page, live_server_url):
+    """Verify that recent paths are saved and accessible."""
+    
+    mock_roots = ["/mock/root"]
+    mock_configs = ["work"]
+    
+    with patch("app.services.filesystem.FileSystemService.get_roots", return_value=mock_roots), \
+         patch("app.services.filesystem.FileSystemService.get_configs", return_value=mock_configs):
+        
+        # Setup localStorage via evaluation BEFORE navigating to wizard
+        page.goto(live_server_url)
+        page.evaluate("localStorage.setItem('recentPaths', JSON.stringify(['/mock/recent/path']))")
+        
+        # Re-open or trigger fetchRoots (we reload to be safe)
+        page.goto(live_server_url)
+        
+        # 1. Open Wizard
+        page.get_by_role("button", name="+ New Session").click()
+        
+        # 2. Verify Recent path appears
+        expect(page.get_by_text("Recent", exact=True)).to_be_visible()
+        expect(page.get_by_text("/mock/recent/path")).to_be_visible()
+        
+        # 3. Click Recent path
+        page.get_by_text("/mock/recent/path").click()
+        
+        # 4. Verify it skipped browsing and went directly to Config
+        expect(page.locator("#config-project-path")).to_have_text("/mock/recent/path")
+        expect(page.get_by_text("Profile Configuration")).to_be_visible()
