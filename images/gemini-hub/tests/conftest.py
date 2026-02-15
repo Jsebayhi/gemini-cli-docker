@@ -36,7 +36,27 @@ def client(app):
     """A test client for the app."""
     return app.test_client()
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def runner(app):
     """A test runner for the app's CLI commands."""
     return app.test_cli_runner()
+
+import threading
+from werkzeug.serving import make_server
+
+@pytest.fixture
+def live_server_url(app):
+    """Start a live server in a separate thread for UI testing."""
+    # Use port 0 to let the OS pick a free port
+    server = make_server('127.0.0.1', 0, app)
+    port = server.socket.getsockname()[1]
+    
+    thread = threading.Thread(target=server.serve_forever)
+    thread.daemon = True
+    thread.start()
+    
+    url = f"http://127.0.0.1:{port}"
+    yield url
+    
+    server.shutdown()
+    thread.join()
