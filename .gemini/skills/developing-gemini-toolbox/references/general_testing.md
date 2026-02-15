@@ -4,18 +4,17 @@ These principles apply to all components in the Gemini CLI Toolbox, regardless o
 
 ## 1. The Testing Trophy
 We prioritize tests that provide the highest confidence-to-cost ratio.
-- **Static Analysis:** Use linters and type checkers to catch syntax and basic logic errors early.
-- **Unit Tests:** Focus on complex, isolated algorithmic logic. Keep them fast and pure.
-- **Integration Tests:** The bulk of the suite. Verify that components work together and correctly interface with system boundaries.
-- **E2E Smoke Tests:** Verify critical user journeys from end to end.
+- **Static Analysis:** Linters and type checkers are mandatory.
+- **Integration Tests:** The bulk of the suite. Verify service interfaces and system boundaries.
+- **Contract Testing:** Enforce JSON Schemas for all API interactions. Verify that mocks used in UI tests match the actual schemas produced by the backend.
 
 ## 2. Mocking Philosophy
 - **Mock at the Boundary:** Only mock slow, non-deterministic, or dangerous external systems (Network, Time, Subprocesses).
-- **Favor Realism:** Do not mock internal services or helper classes. If a component can be instantiated easily, use the real implementation.
-- **Data over Mocks:** Use real files or temporary database instances instead of mocking filesystem APIs or database queries whenever possible.
+- **Favor Realism:** Do not mock internal services. Let the code execute through the full stack.
+- **Data over Mocks:** Use real temporary file structures (`tmp_path`) instead of mocking filesystem APIs.
 
 ## 3. Test Qualities
-- **Atomicity:** Each test should verify a single logical outcome.
-- **Isolation:** Tests must be independent. The success or failure of one test must not affect another.
-- **Determinism:** Tests must produce the same result every time. Avoid static delays; wait for signals.
-- **Clean Slate:** Every test must start with a fresh environment (namespaces, temporary directories, etc.).
+- **Atomicity:** Each test verifies a single logical outcome.
+- **Synchronization:** When starting servers/services for E2E tests, use polling/probes to ensure the service is ready before yielding to the test (avoid race conditions).
+- **Clean Slate:** Every test starts with a fresh environment (namespaces, temporary directories, etc.).
+- **Parallel Readiness:** NEVER mutate global shared state. Use local overrides or scoped fixtures.

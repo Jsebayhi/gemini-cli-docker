@@ -3,25 +3,19 @@
 This document defines how to apply general testing principles specifically using the Python toolchain.
 
 ## 1. Toolchain
-- **Runner:** Use `pytest` as the primary test runner.
-- **Plugins:** 
-    - `pytest-mock`: For `unittest.mock` integration.
-    - `pytest-xdist`: For parallel test execution.
-    - `pytest-cov`: For coverage reporting.
+- **Runner:** `pytest` with `pytest-xdist` (parallel) and `pytest-mock`.
+- **Contract Enforcement:** `jsonschema` for validating API responses and mock payloads.
 
-## 2. Parallelism & Thread Safety
-- **Mandatory Parallelism:** Run tests using `pytest -n auto`.
-- **Monkeypatching:** Use the `monkeypatch` fixture to override global state (Config attributes, Environment variables) safely. NEVER mutate class attributes directly.
-- **Process Isolation:** Assume every test runs in a dedicated worker process.
+## 2. Infrastructure & Synchronization
+- **Process Isolation:** The live HTTP server MUST run in the same process memory as the test runner when using `unittest.mock`.
+- **Socket Probe:** Use a connection probe in `conftest.py` to wait for the Flask server to bind to its socket before starting UI tests.
+- **Monkeypatching:** Always use the `monkeypatch` fixture for thread-safe configuration overrides.
 
-## 3. Mocking Implementation
-- **Boundary Mocking:** Use `unittest.mock.patch` to stub out `subprocess.run` or `requests`.
-- **Filesystem Testing:** Use the `tmp_path` fixture to create real files/directories on the container's disk. DO NOT mock `os.path` or `open`.
-
-## 4. Quality & Coverage
+## 3. Quality & Coverage (DRY)
 - **Threshold:** Every component must exceed **90% coverage**.
-- **Accurate Reporting:** A `.coveragerc` file with `parallel = True` MUST be present to ensure coverage data from parallel workers is correctly merged.
-- **Log Hygiene:** Use a `suppress_logs` fixture (adjusting levels to `CRITICAL`) when testing expected error paths to keep CI logs clean.
+- **Centralized Config:** Configuration (thresholds, parallel workers, source paths) must live in `.coveragerc` rather than CLI flags in the Makefile.
+- **Real FS:** Use `tmp_path` for all filesystem testing.
 
-## 5. Dependency Scoping
-- **Isolated Testing Stack:** Maintain a `requirements-test.txt` file for testing-only dependencies (Pytest, Mocks, etc.) to keep production images slim.
+## 4. Log & Console Hygiene
+- **Suppression:** Use a `suppress_logs` fixture to silence expected errors.
+- **Zero-Console-Error:** Configure Playwright to catch `console.error` and fail the test in the `hub` fixture.
