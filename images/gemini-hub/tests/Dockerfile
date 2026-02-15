@@ -12,7 +12,8 @@ WORKDIR /app
 
 # Install dependencies (Prod + Test)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-test.txt .
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-test.txt
 
 # Install Playwright browsers and their system dependencies
 # We only install chromium to keep the image size manageable

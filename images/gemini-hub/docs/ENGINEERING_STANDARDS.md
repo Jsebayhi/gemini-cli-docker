@@ -65,9 +65,10 @@ When executing shell commands (e.g., `gemini-toolbox`, `tailscale`):
 ## 3. Dependency Management
 
 ### 3.1 Explicit Dependencies
-*   **Manifest:** All Python dependencies must be listed in `requirements.txt`.
+*   **Manifest:** All production Python dependencies must be listed in `requirements.txt`.
+*   **Test Dependencies:** All test-only dependencies (e.g., `pytest`, `playwright`) must be listed in `requirements-test.txt` to keep the production image slim.
 *   **Pinning:** Versions must be pinned (e.g., `Flask==3.0.0`) to ensure reproducible builds.
-*   **Dockerfile:** The Dockerfile must install from this file (`pip install -r requirements.txt`) rather than ad-hoc packages.
+*   **Dockerfile:** The production Dockerfile must install only from `requirements.txt`, while the test Dockerfile installs from both.
 
 ## 4. Frontend Standards
 
