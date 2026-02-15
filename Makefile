@@ -113,8 +113,15 @@ lint-python:
 	docker run --rm -v "$(shell pwd):/mnt" -w /mnt ghcr.io/astral-sh/ruff check images/gemini-hub
 
 .PHONY: test
-test:
+test: test-bash
 	$(MAKE) -C images/gemini-hub test
+
+.PHONY: test-bash
+test-bash:
+	@echo ">> Building Bash Test Runner..."
+	docker build -t gemini-bash-tester tests/bash
+	@echo ">> Running Bash Automated Tests (Bats)..."
+	docker run --rm -v "$(shell pwd):/code" -w /code gemini-bash-tester tests/bash
 
 # --- Mandatory Pre-PR Check ---
 .PHONY: local-ci
