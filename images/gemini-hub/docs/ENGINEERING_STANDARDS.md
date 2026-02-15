@@ -76,6 +76,10 @@ When executing shell commands (e.g., `gemini-toolbox`, `tailscale`):
 *   **No Inline HTML:** Do not return HTML strings from Python functions. Use `render_template`.
 *   **Assets:** CSS and JS should reside in `static/`, not embedded in `<style>` tags within the HTML templates (unless critical for a single-file prototype, which we are moving away from).
 
+### 4.2 Testability & Selectors
+*   **Avoid Ambiguous Selectors:** In E2E tests, do not rely on global text-based selectors (e.g., `page.get_by_text("proj1")`) if the text appears in multiple locations (like list items vs breadcrumbs).
+*   **Scoped Locators:** Always scope your locators to a specific container (e.g., `page.locator("#roots-list").get_by_text(...)`). This prevents "Strict Mode" violations in Playwright and makes tests resilient to UI layout changes.
+
 ## 5. Testing Strategy
 
 ### 5.1 Framework & Tools
@@ -125,6 +129,9 @@ While we follow the Testing Trophy, we still enforce high coverage standards to 
     *   **Integration Tests:** Do **not** mock the Service layer. Do **not** mock internal resources that can be easily instantiated (like the Filesystem).
         *   **Good:** Use `tmp_path` to create real files, then call the API. This verifies the full stack: `HTTP -> Router -> Service -> Real FS`.
         *   **Bad:** Mocking `os.listdir` in an API test. This degrades the test to a slow unit test.
+    *   **E2E Process Isolation:** When using Playwright with `unittest.mock`, the live server MUST run in the same process memory space as the test runner.
+        *   **Why:** Python mocks are process-local. If the server runs in a sub-process, it will hit the real system instead of your mocks.
+        *   **Implementation:** Use a manual `threading` server in `conftest.py` rather than `pytest-flask`'s default behavior.
     *   **When to Mock:** Only mock **slow, dangerous, or non-deterministic** external boundaries.
         *   **Allowed Mocks:** `subprocess.run` (don't actually run Docker), `requests.get` (don't hit real URLs), `time.sleep`.
         *   **Forbidden Mocks:** `FileSystemService`, `os.path` (use `tmp_path`), internal helper classes.
