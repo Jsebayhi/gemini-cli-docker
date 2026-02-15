@@ -196,3 +196,32 @@ def test_dashboard_filtering(page: Page, live_server_url):
         page.wait_for_timeout(500)
         expect(page.get_by_text("proj1")).not_to_be_visible()
         expect(page.get_by_text("proj2")).to_be_visible()
+
+def test_session_stop_lifecycle(page: Page, live_server_url):
+    """Verify that stopping a session from the UI works correctly."""
+    
+    mock_machines = [
+        {"name": "gem-to-stop", "project": "stop-me", "type": "geminicli", "ip": "100.1.1.1", "online": True},
+    ]
+    
+    with patch("app.services.tailscale.TailscaleService.get_status", return_value={}), \
+         patch("app.services.tailscale.TailscaleService.parse_peers", return_value=mock_machines), \
+         patch("app.services.session.SessionService.stop", return_value={"status": "success", "session_id": "gem-to-stop"}):
+        
+        page.goto(live_server_url)
+        expect(page.get_by_text("stop-me")).to_be_visible()
+        
+        # 1. Handle the confirmation dialog
+        # In Playwright, we must register the dialog handler BEFORE the action that triggers it
+        page.on("dialog", lambda dialog: dialog.accept())
+        
+        # 2. Click Stop
+        page.get_by_role("button", name="Stop").click()
+        
+        # 3. Verify UI state (button text changes and card becomes semi-transparent)
+        # The button text changes to "Stopped"
+        expect(page.get_by_role("button", name="Stopped")).to_be_visible()
+        
+        # The card should have opacity 0.5
+        card = page.locator(".card", has_text="stop-me")
+        expect(card).to_have_css("opacity", "0.5")
