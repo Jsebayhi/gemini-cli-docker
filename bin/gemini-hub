@@ -109,7 +109,14 @@ main() {
         -h|--help)   show_help; exit 0 ;;
         stop)
             echo ">> Stopping Gemini Hub..."
-            docker stop "$container_name" >/dev/null 2>&1 || echo ">> Hub is not running."
+            if ! docker stop "$container_name" >/dev/null 2>&1; then
+                if ! docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+                    echo ">> Hub is not running."
+                else
+                    echo "Error: Failed to stop Gemini Hub service." >&2
+                    exit 1
+                fi
+            fi
             exit 0
             ;;
         *)           echo "Error: Unknown argument '$1'"; show_help; exit 1 ;;

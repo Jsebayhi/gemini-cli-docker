@@ -106,3 +106,14 @@ EOF
     run grep "ENV: COLORTERM=truecolor" "$MOCK_DOCKER_LOG"
     assert_success
 }
+
+@test "Hub Journey: Multiple Workspaces" {
+    local ws1="$TEST_TEMP_DIR/ws1"
+    local ws2="$TEST_TEMP_DIR/ws2"
+    mkdir -p "$ws1" "$ws2"
+    
+    run gemini-hub --key tskey-123 --workspace "$ws1" --workspace "$ws2" --workspace "$ws1"
+    assert_success
+    run grep "HUB_ROOTS=$ws1:$ws2" "$MOCK_DOCKER_LOG"
+    assert_success
+}

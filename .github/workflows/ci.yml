@@ -61,6 +61,9 @@ jobs:
           # Run tests (enforces 90% coverage via CMD)
           docker run --rm gemini-hub-test
 
+      - name: Run Bash Automated Tests
+        run: make test-bash
+
   build:
     name: Build & Test
     needs: lint

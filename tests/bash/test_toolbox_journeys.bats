@@ -35,6 +35,14 @@ teardown() {
     assert_success
 }
 
+@test "Journey 3: Config Override (--config)" {
+    mkdir -p "$TEST_TEMP_DIR/custom-config"
+    run gemini-toolbox --config "$TEST_TEMP_DIR/custom-config" --bash
+    assert_success
+    run grep "custom-config:/home/gemini/.gemini" "$MOCK_DOCKER_LOG"
+    assert_success
+}
+
 @test "Journey 4: Sandbox (--no-docker --no-ide)" {
     run gemini-toolbox --no-docker --no-ide --bash
     assert_success

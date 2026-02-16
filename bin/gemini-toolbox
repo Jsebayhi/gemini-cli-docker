@@ -105,12 +105,12 @@ setup_worktree() {
         
         if [[ -n "$branch_name" ]]; then
             if git show-ref --verify --quiet "refs/heads/$branch_name"; then
-                git worktree add "$worktree_path" "$branch_name"
+                git worktree add "$worktree_path" "$branch_name" || { echo "Error: Failed to create git worktree." >&2; exit 1; }
             else
-                git worktree add -b "$branch_name" "$worktree_path"
+                git worktree add -b "$branch_name" "$worktree_path" || { echo "Error: Failed to create git worktree." >&2; exit 1; }
             fi
         else
-            git worktree add --detach "$worktree_path" HEAD
+            git worktree add --detach "$worktree_path" HEAD || { echo "Error: Failed to create git worktree." >&2; exit 1; }
         fi
     fi
     
@@ -349,7 +349,10 @@ main() {
 
     local original_project_dir="$project_dir"
     if [ "$enable_worktree" = true ]; then
-        project_dir=$(setup_worktree "$project_name" "$arg_name" "$project_dir")
+        # Capture output separately to honor set -e
+        local new_wt
+        new_wt=$(setup_worktree "$project_name" "$arg_name" "$project_dir")
+        project_dir="$new_wt"
     fi
 
     if [ "$force_update" = true ]; then
@@ -427,7 +430,10 @@ main() {
 
     local network_mode="--net=host"
     if [ "$remote_mode" = true ]; then
-        if [ -z "$tailscale_key" ]; then exit 1; fi
+        if [ -z "$tailscale_key" ]; then
+            echo "Error: TAILSCALE_KEY is required for --remote mode." >&2
+            exit 1
+        fi
         local hub_name="gemini-hub-service"
         if [ -z "$(docker ps -q -f name="^/${hub_name}$")" ]; then
             local hub_script="${script_dir}/gemini-hub"

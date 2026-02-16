@@ -135,7 +135,14 @@ test-bash: deps-bash
 	@echo ">> Bash Coverage Summary:"
 	@REPORT_JSON=$$(find coverage/bash -name "coverage.json" | head -n 1); \
 	if [ -n "$$REPORT_JSON" ] && [ -f "$$REPORT_JSON" ]; then \
-		cat "$$REPORT_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(f\"Percent covered: {data['percent_covered']}%\")"; \
+		COVERAGE=$$(cat "$$REPORT_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['percent_covered'])"); \
+		echo "Percent covered: $$COVERAGE%"; \
+		if python3 -c "import sys; exit(0 if float(sys.argv[1]) >= 85.0 else 1)" "$$COVERAGE"; then \
+			echo ">> Coverage threshold (85%) PASSED."; \
+		else \
+			echo ">> Error: Coverage threshold (85%) FAILED (current: $$COVERAGE%)." >&2; \
+			exit 1; \
+		fi \
 	else \
 		echo ">> Warning: Coverage report not found."; \
 	fi
