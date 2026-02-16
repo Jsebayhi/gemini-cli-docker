@@ -39,8 +39,22 @@ mock_docker() {
     cat <<EOF > "$TEST_TEMP_DIR/bin/docker"
 #!/bin/bash
 echo "docker \$*" >> "$MOCK_DOCKER_LOG"
+# Log env vars that we care about
+echo "ENV: HTTP_PROXY=\$HTTP_PROXY" >> "$MOCK_DOCKER_LOG"
+echo "ENV: TERM=\$TERM" >> "$MOCK_DOCKER_LOG"
+echo "ENV: COLORTERM=\$COLORTERM" >> "$MOCK_DOCKER_LOG"
+echo "ENV: LANG=\$LANG" >> "$MOCK_DOCKER_LOG"
+
 case "\$1" in
-    inspect) exit 1 ;;
+    inspect)
+        # Handle HUB_ROOTS inspection
+        if [[ "\$*" == *"gemini-hub-service"* ]]; then
+             # Default behavior for inspection if not overridden by test
+             echo "HUB_ROOTS=/default/root"
+             exit 0
+        fi
+        exit 1 
+        ;;
     ps) exit 0 ;;
     *) exit 0 ;;
 esac

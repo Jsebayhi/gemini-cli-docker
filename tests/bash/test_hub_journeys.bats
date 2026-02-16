@@ -59,14 +59,11 @@ case "\$*" in
 esac
 EOF
 
-    # Since we use realpath -m, we don't necessarily need the directories to exist, 
-    # but the script checks [ -d "\$abs_root" ] before mounting.
+    gemini-hub --key tskey-123 --workspace "$new_root"
     
-    run gemini-hub --key tskey-123 --workspace "$new_root"
-    # We allow some error if restart logic fails, but let's check output
-    echo "OUTPUT: $output" >&2
-    assert_success
-    assert_output --partial "Merging roots and restarting"
+    grep "docker stop gemini-hub-service" "$MOCK_DOCKER_LOG"
+    # Order is new:old because of how the script appends/merges
+    grep "HUB_ROOTS=$new_root:$old_root" "$MOCK_DOCKER_LOG"
 }
 
 @test "Hub Journey: Smart Restart - Already Covered" {
@@ -98,4 +95,14 @@ EOF
     run gemini-hub stop
     assert_success
     assert_output --partial "Hub is not running"
+}
+
+@test "Hub Journey: Environment Propagation" {
+    TERM="xterm-256color" COLORTERM="truecolor" run gemini-hub --key tskey-123
+    assert_success
+    
+    run grep "ENV: TERM=xterm-256color" "$MOCK_DOCKER_LOG"
+    assert_success
+    run grep "ENV: COLORTERM=truecolor" "$MOCK_DOCKER_LOG"
+    assert_success
 }

@@ -174,3 +174,16 @@ EOF
     assert_failure
     assert_output --partial "Error: Cannot use both --config and --profile"
 }
+
+@test "Journey: Environment Propagation" {
+    # Using a simple test case to avoid any side effects
+    HTTP_PROXY="http://proxy:8080" COLORTERM="truecolor" LANG="en_US.UTF-8" run gemini-toolbox --bash
+    assert_success
+    
+    run grep "ENV: HTTP_PROXY=http://proxy:8080" "$MOCK_DOCKER_LOG"
+    assert_success
+    run grep "ENV: COLORTERM=truecolor" "$MOCK_DOCKER_LOG"
+    assert_success
+    run grep "ENV: LANG=en_US.UTF-8" "$MOCK_DOCKER_LOG"
+    assert_success
+}
