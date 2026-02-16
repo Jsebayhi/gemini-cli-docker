@@ -26,17 +26,76 @@ teardown() {
 }
 
 @test "Hub Journey: Workspace Mounts" {
-    mkdir -p "$TEST_TEMP_DIR/ws1" "$TEST_TEMP_DIR/ws2"
-    run gemini-hub --key tskey-123 --workspace "$TEST_TEMP_DIR/ws1" --workspace "$TEST_TEMP_DIR/ws2"
+    local ws1="$TEST_TEMP_DIR/ws1"
+    local ws2="$TEST_TEMP_DIR/ws2"
+    mkdir -p "$ws1" "$ws2"
+    run gemini-hub --key tskey-123 --workspace "$ws1" --workspace "$ws2"
     assert_success
     run grep "HUB_ROOTS=.*ws1.*ws2" "$MOCK_DOCKER_LOG"
     assert_success
 }
 
 @test "Hub Journey: Config Root Override" {
-    mkdir -p "$TEST_TEMP_DIR/custom-configs"
-    run gemini-hub --key tskey-123 --config-root "$TEST_TEMP_DIR/custom-configs"
+    local custom="$TEST_TEMP_DIR/custom-configs"
+    mkdir -p "$custom"
+    run gemini-hub --key tskey-123 --config-root "$custom"
     assert_success
     run grep "HOST_CONFIG_ROOT=.*custom-configs" "$MOCK_DOCKER_LOG"
     assert_success
+}
+
+@test "Hub Journey: Smart Restart - Merge Roots (Non-interactive)" {
+    # Use paths within TEST_TEMP_DIR to ensure they exist and are accessible
+    local old_root="$TEST_TEMP_DIR/old-root"
+    local new_root="$TEST_TEMP_DIR/new-root"
+    mkdir -p "$old_root" "$new_root"
+    
+    cat <<EOF > "$TEST_TEMP_DIR/bin/docker"
+#!/bin/bash
+case "\$*" in
+    "ps"* ) echo "gemini-hub-service"; exit 0 ;;
+    "inspect"* ) echo "HUB_ROOTS=$old_root"; exit 0 ;;
+    * ) echo "docker \$*" >> "$MOCK_DOCKER_LOG"; exit 0 ;;
+esac
+EOF
+
+    # Since we use realpath -m, we don't necessarily need the directories to exist, 
+    # but the script checks [ -d "\$abs_root" ] before mounting.
+    
+    run gemini-hub --key tskey-123 --workspace "$new_root"
+    # We allow some error if restart logic fails, but let's check output
+    echo "OUTPUT: $output" >&2
+    assert_success
+    assert_output --partial "Merging roots and restarting"
+}
+
+@test "Hub Journey: Smart Restart - Already Covered" {
+    local covered="$TEST_TEMP_DIR/covered"
+    mkdir -p "$covered"
+    cat <<EOF > "$TEST_TEMP_DIR/bin/docker"
+#!/bin/bash
+case "\$*" in
+    "ps"* ) echo "gemini-hub-service"; exit 0 ;;
+    "inspect"* ) echo "HUB_ROOTS=$covered"; exit 0 ;;
+esac
+EOF
+    run gemini-hub --key tskey-123 --workspace "$covered"
+    assert_success
+    assert_output --partial "Active Hub already covers all requested workspaces"
+}
+
+@test "Hub Journey: Workspace does not exist (Warning)" {
+    run gemini-hub --key tskey-123 --workspace "$TEST_TEMP_DIR/non-existent"
+    assert_success
+    assert_output --partial "Warning: Workspace root"
+}
+
+@test "Hub Journey: Stop Hub not running" {
+    cat <<EOF > "$TEST_TEMP_DIR/bin/docker"
+#!/bin/bash
+if [[ "\$1" == "stop" ]]; then exit 1; fi
+EOF
+    run gemini-hub stop
+    assert_success
+    assert_output --partial "Hub is not running"
 }

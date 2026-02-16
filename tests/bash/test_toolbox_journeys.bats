@@ -56,7 +56,7 @@ teardown() {
     assert_success
 }
 
-@test "Journey 9: Stop" {
+@test "Journey 9: Stop - Single Match" {
     # Mocking docker ps to return a matching session
     cat <<EOF > "$TEST_TEMP_DIR/bin/docker"
 #!/bin/bash
@@ -72,10 +72,42 @@ EOF
     assert_success
 }
 
+@test "Journey 9: Stop - Multiple Matches (Failure)" {
+    cat <<EOF > "$TEST_TEMP_DIR/bin/docker"
+#!/bin/bash
+if [[ "\$*" == "ps"* ]]; then
+    echo "gem-myproject-geminicli-1"
+    echo "gem-myproject-geminicli-2"
+    exit 0
+fi
+EOF
+    run gemini-toolbox stop myproject
+    assert_failure
+    assert_output --partial "Error: Multiple sessions found"
+}
+
+@test "Journey 9: Stop - No Matches (Failure)" {
+    cat <<EOF > "$TEST_TEMP_DIR/bin/docker"
+#!/bin/bash
+if [[ "\$*" == "ps"* ]]; then
+    exit 0
+fi
+EOF
+    run gemini-toolbox stop myproject
+    assert_failure
+    assert_output --partial "Error: No active sessions found"
+}
+
 @test "Journey 10: Update" {
     run gemini-toolbox --image remote/image update
     run grep "docker pull remote/image" "$MOCK_DOCKER_LOG"
     assert_success
+}
+
+@test "Journey 10: Update - Local Image (Failure)" {
+    run gemini-toolbox update
+    assert_failure
+    assert_output --partial "Error: You are using a local image"
 }
 
 @test "Journey 11: Volume Mounts (-v)" {
@@ -120,4 +152,25 @@ EOF
     assert_success
     run grep "GEMINI_TOOLBOX_TMUX=false" "$MOCK_DOCKER_LOG"
     assert_success
+}
+
+@test "Journey: Profile with Extra Args" {
+    mkdir -p "$TEST_TEMP_DIR/args-profile"
+    echo "--no-docker" > "$TEST_TEMP_DIR/args-profile/extra-args"
+    run gemini-toolbox --profile "$TEST_TEMP_DIR/args-profile" --bash
+    assert_success
+    run grep "/var/run/docker.sock" "$MOCK_DOCKER_LOG"
+    assert_failure
+}
+
+@test "Journey: Invalid Project Path (Failure)" {
+    run gemini-toolbox --project /non/existent/path
+    assert_failure
+    assert_output --partial "Error: Project directory"
+}
+
+@test "Journey: Simultaneous Config and Profile (Failure)" {
+    run gemini-toolbox --config /tmp/c --profile /tmp/p
+    assert_failure
+    assert_output --partial "Error: Cannot use both --config and --profile"
 }
