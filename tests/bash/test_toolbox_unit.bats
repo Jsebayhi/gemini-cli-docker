@@ -453,6 +453,39 @@ EOF
     run main update
     assert_failure
     assert_output --partial "Error: Failed to pull image"
+    run grep "docker pull .*gemini-cli-toolbox:latest-stable" "$MOCK_DOCKER_LOG"
+    assert_success
+}
+
+@test "main: image detection logic (local main fallback)" {
+    source_toolbox
+    mock_git
+    
+    # Mock git to return a branch so suffix is not empty
+    cat <<EOF > "$TEST_TEMP_DIR/bin/git"
+#!/bin/bash
+if [[ "\$*" == *"rev-parse --abbrev-ref HEAD"* ]]; then echo "feature/x"; exit 0; fi
+if [[ "\$*" == *"rev-parse --is-inside-work-tree"* ]]; then exit 0; fi
+exit 0
+EOF
+    chmod +x "$TEST_TEMP_DIR/bin/git"
+    
+    # Mock docker: fail for branch tag, succeed for fallback tag
+    cat <<EOF > "$TEST_TEMP_DIR/bin/docker"
+#!/bin/bash
+if [[ "\$1" == "image" && "\$2" == "inspect" ]]; then
+    if [[ "\$3" == *"latest-feature-x"* ]]; then exit 1; fi
+    if [[ "\$3" == *"latest"* ]]; then exit 0; fi
+fi
+echo "docker \$*" >> "$MOCK_DOCKER_LOG"
+exit 0
+EOF
+    chmod +x "$TEST_TEMP_DIR/bin/docker"
+
+    run main --bash
+    assert_success
+    run grep "gemini-cli-toolbox/cli:latest " "$MOCK_DOCKER_LOG"
+    assert_success
 }
 
 @test "main: connect command session not found" {

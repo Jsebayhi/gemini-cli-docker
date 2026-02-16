@@ -223,20 +223,27 @@ main() {
 
     local local_tag=""
     local remote_tag=""
+    local local_fallback_tag=""
     local image_name=""
+    
     if [ -n "$override_image" ]; then
         image_name="$override_image"
     elif [ "$variant" == "preview" ]; then
         local_tag="gemini-cli-toolbox/cli-preview:latest${branch_suffix}"
+        local_fallback_tag="gemini-cli-toolbox/cli-preview:latest"
         remote_tag="${DOCKER_HUB_USER}/gemini-cli-toolbox:latest-preview"
     else
         local_tag="gemini-cli-toolbox/cli:latest${branch_suffix}"
+        local_fallback_tag="gemini-cli-toolbox/cli:latest"
         remote_tag="${DOCKER_HUB_USER}/gemini-cli-toolbox:latest-stable"
     fi
 
     if [ -z "$image_name" ]; then
         if docker image inspect "$local_tag" >/dev/null 2>&1; then
             image_name="$local_tag"
+        elif [ -n "$branch_suffix" ] && docker image inspect "$local_fallback_tag" >/dev/null 2>&1; then
+            # Fallback: User is on a branch but hasn't built it, use their local main build
+            image_name="$local_fallback_tag"
         else
             image_name="$remote_tag"
         fi
