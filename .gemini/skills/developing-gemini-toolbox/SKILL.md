@@ -54,6 +54,7 @@ Pushing and PR conventions.
 ## 📚 References
 *   [Core Mandates](references/mandates.md)
 *   [DevSecOps Governance](references/devsecops.md)
+*   [ADR Best Practices](references/adr_best_practices.md)
 *   [Architecture](docs/ARCHITECTURE_AND_FEATURES.md)
 *   [Conventions](references/conventions.md)
 *   [Bash Best Practices](references/bash_best_practices.md)
