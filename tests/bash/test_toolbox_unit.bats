@@ -44,7 +44,7 @@ source_toolbox() {
     assert_output --partial "Error: --remote and --no-tmux are incompatible"
 }
 
-@test "setup_worktree error: not a git repo" {
+@test "setup_worktree Error: not a git repo" {
     source_toolbox
     local not_a_repo="$TEST_TEMP_DIR/not-a-repo"
     mkdir -p "$not_a_repo"
@@ -60,7 +60,7 @@ source_toolbox() {
     rm -rf "$isolated_dir"
 }
 
-@test "setup_worktree error: git not found" {
+@test "setup_worktree Error: git not found" {
     source_toolbox
     # Mock git to not found
     cat <<EOF > "$TEST_TEMP_DIR/bin/git"
@@ -71,6 +71,31 @@ EOF
     run setup_worktree "proj" "branch" "."
     # This might be tricky if it uses the real git first.
     # Our setup_test_env puts TEST_TEMP_DIR/bin first.
+}
+
+@test "setup_worktree: stdout purity (no extra lines)" {
+    source_toolbox
+    mock_git
+    # We want to ensure that ONLY the path is on stdout
+    # even when logging is at INFO level.
+    local out_file="$TEST_TEMP_DIR/stdout.log"
+    local err_file="$TEST_TEMP_DIR/stderr.log"
+    
+    LOG_LEVEL=2 setup_worktree "myproj" "pure" "." >"$out_file" 2>"$err_file"
+    
+    # Check stdout
+    local line_count
+    line_count=$(wc -l < "$out_file")
+    assert_equal "$line_count" 1
+    
+    # Ensure the single line is the expected path
+    local out_content
+    out_content=$(cat "$out_file")
+    assert_regex "$out_content" ".*/myproj/pure$"
+    
+    # Check stderr contains logs
+    run grep ">> Creating worktree at" "$err_file"
+    assert_success
 }
 
 @test "main: image detection logic (local exists)" {
@@ -86,7 +111,7 @@ EOF
     run grep "gemini-cli-toolbox/cli:latest" "$MOCK_DOCKER_LOG"
 }
 
-@test "setup_worktree error: empty repository" {
+@test "setup_worktree Error: empty repository" {
     source_toolbox
     local empty_repo="$TEST_TEMP_DIR/empty-repo"
     mkdir -p "$empty_repo"
@@ -286,7 +311,7 @@ EOF
     assert_success
 }
 
-@test "setup_worktree error: already in a worktree" {
+@test "setup_worktree Error: already in a worktree" {
     source_toolbox
     # Mock git rev-parse --show-toplevel to return a path, 
     # and then simulate a .git file (not directory) there.
@@ -319,7 +344,7 @@ EOF
     assert_output --partial "Error: Cannot use both --config and --profile simultaneously."
 }
 
-@test "setup_worktree error: git worktree add fails" {
+@test "setup_worktree Error: git worktree add fails" {
     source_toolbox
     # Mock git to fail specifically on worktree add
     cat <<EOF > "$TEST_TEMP_DIR/bin/git"
