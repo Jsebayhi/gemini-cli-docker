@@ -104,6 +104,13 @@ Discovery tools (like `gemini-hub`) rely on this structure.
 *   **Docker-out-of-Docker:** The agent controls the **Host** daemon. Paths mounted must be absolute and exist on the host. `localhost` inside the container refers to the container, not the host (unless `--net=host` is used).
 *   **Terminal Colors:** We explicitly pass `COLORTERM` and `TERM` env vars to ensure TrueColor support in remote sessions.
 
+## 11. Logging Standards (Bash)
+To prevent `stdout` corruption and provide consistent granularity, all Bash scripts must use the standardized logging module.
+*   **Mechanism:** Functions `log_error`, `log_warn`, `log_info`, and `log_debug`.
+*   **Redirection:** All logs are automatically redirected to `stderr` (FD 2).
+*   **Stdout Purity:** `stdout` (FD 1) is reserved strictly for functional data returns (e.g., paths, IDs).
+*   **Control:** Users can control verbosity via the `LOG_LEVEL` environment variable (0=ERROR, 1=WARN, 2=INFO, 3=DEBUG).
+
 ## 8. Documentation Architecture
 
 ### File Roles & Expectations
