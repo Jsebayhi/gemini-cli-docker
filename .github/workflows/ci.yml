@@ -6,18 +6,148 @@ on:
   pull_request:
     branches: [ "main" ]
   schedule:
-    # Google releases @google/gemini-cli ~Thursday 20:00 UTC.
-    # We build Friday morning to catch the new version immediately.
-    - cron: '0 5 * * 5'  # Friday at 05:00 UTC
-    - cron: '0 12 * * 6' # Saturday at 12:00 UTC (Fallback/Hotfix catch)
+    - cron: '0 5 * * 5'
+    - cron: '0 12 * * 6'
 
 jobs:
   lint:
-    name: Code Quality
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Validate Bash Scripts (Syntax)
+        run: |
+          bash -n bin/gemini-toolbox bin/gemini-hub
+          find images -name "*.sh" -print0 | xargs -0 -I {} bash -n "{}"
+
+      - name: Validate Bash Scripts (Lint)
+        run: |
+          # ubuntu-latest has shellcheck pre-installed
+          shellcheck bin/gemini-toolbox bin/gemini-hub
+          find images -name "*.sh" -print0 | xargs -0 shellcheck
+
+      - name: Validate Python (Syntax & Lint)
+        run: |
+          find images/gemini-hub -name "*.py" -exec python -m py_compile {} +
+          ruff check images/gemini-hub
+
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Determine Image Tag
+        id: tag
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            SAFE_BRANCH=$(echo "${{ github.head_ref || github.ref_name }}" | sed 's/[^a-zA-Z0-9]/-/g')
+            echo "tag=latest-$SAFE_BRANCH" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Prepare Artifacts
+        run: |
+          cp bin/gemini-toolbox images/gemini-hub/
+          make deps-bash
+
+      - name: Bake Images (Tests & Hub)
+        uses: docker/bake-action@v4
+        with:
+          targets: hub, hub-test, bash-test, base
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+            IMAGE_TAG=${{ steps.tag.outputs.tag }}
+          load: true
+
+      - name: Run Tests (Parallel)
+        run: |
+          # Run Bash Automated Tests
+          mkdir -p coverage/bash
+          docker run --rm \
+            --cap-add=SYS_PTRACE \
+            -v "$(pwd):/code" \
+            -w /code \
+            --entrypoint kcov \
+            gemini-bash-tester:latest \
+            --include-path=/code/bin,/code/images \
+            /code/coverage/bash \
+            bats tests/bash > tests-bash.log 2>&1 &
+          BASH_PID=$!
+
+          # Run Hub Automated Tests
+          mkdir -p coverage/python
+          docker run --rm \
+            -v "$(pwd)/coverage/python:/coverage" \
+            gemini-hub-test:latest \
+            python3 -m pytest -n auto -vv \
+            --cov=app \
+            --cov-report=json:/coverage/coverage.json \
+            --cov-fail-under=90 \
+            tests/unit tests/integration > tests-hub.log 2>&1 &
+          HUB_PID=$!
+
+          # Wait for both
+          wait $BASH_PID || (cat tests-bash.log && exit 1)
+          wait $HUB_PID || (cat tests-hub.log && exit 1)
+          
+          echo "Bash Tests Output:"
+          cat tests-bash.log
+          echo "Hub Tests Output:"
+          cat tests-hub.log
+
+      - name: Bake Images (Apps)
+        uses: docker/bake-action@v4
+        with:
+          targets: cli, cli-preview
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+            IMAGE_TAG=${{ steps.tag.outputs.tag }}
+          load: true
+
+      - name: Security Scan (Parallel)
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          images=("gemini-cli-toolbox/base:$TAG" "gemini-cli-toolbox/hub:$TAG" "gemini-cli-toolbox/cli:$TAG")
+          for img in "${images[@]}"; do
+            echo "Scanning $img..."
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$(pwd)/.trivyignore:/.trivyignore" \
+              aquasec/trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed --ignorefile /.trivyignore "$img" > "scan-${img//\//-}.log" 2>&1 &
+          done
+          
+          # Wait and check results
+          FAIL=0
+          for pid in $(jobs -p); do
+            wait "$pid" || FAIL=1
+          done
+          
+          # Print logs if failed
+          if [ $FAIL -ne 0 ]; then
+            cat scan-*.log
+            exit 1
+          fi
+          echo "All scans passed."
+
       - name: Generate Bypass Token
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: generate_token
@@ -26,97 +156,19 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          token: ${{ steps.generate_token.outputs.token || github.token }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Linters
-        run: |
-          sudo apt-get update && sudo apt-get install -y shellcheck
-          pip install ruff
-
-      - name: Validate Bash Scripts (Syntax)
-        run: |
-          # Check Wrapper Scripts
-          bash -n bin/gemini-toolbox
-          bash -n bin/gemini-hub
-          
-          # Check Entrypoints
-          find images -name "*.sh" -print0 | xargs -0 -I {} bash -n "{}"
-
-      - name: Validate Bash Scripts (Lint)
-        run: |
-          # strict check
-          shellcheck bin/gemini-toolbox bin/gemini-hub
-          find images -name "*.sh" -print0 | xargs -0 shellcheck
-
-      - name: Validate Python (Syntax)
-        run: |
-          find images/gemini-hub -name "*.py" -exec python -m py_compile {} +
-
-      - name: Validate Python (Lint)
-        run: |
-          # Check images/gemini-hub
-          ruff check images/gemini-hub
-
-      - name: Run Tests (Gemini Hub)
-        run: |
-          cd images/gemini-hub
-          # Build the test image (includes dev dependencies)
-          docker build -t gemini-hub-test -f tests/Dockerfile .
-          # Run tests (enforces 90% coverage via CMD)
-          docker run --rm gemini-hub-test
-
-      - name: Run Bash Automated Tests
-        run: make test-bash
-
       - name: Compute Global Coverage & Update Badge
-        id: coverage
+        if: always()
         run: |
-          # Create python coverage dir
-          mkdir -p coverage/python
-          chmod 777 coverage/python
-          
-          # Run Python Tests again to generate JSON report (Make test now mounts this volume)
-          cd images/gemini-hub
-          make test
-          cd ../..
-          
-          # Run Computation Script
+          # Use the pre-installed python to run the script
           python3 scripts/update_coverage.py
 
       - name: Commit Coverage Badge Update
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
+          token: ${{ steps.generate_token.outputs.token || github.token }}
           commit_message: "docs: update coverage badge [skip ci]"
           file_pattern: README.md
-
-  build:
-    name: Build & Test
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Install Make
-        run: sudo apt-get update && sudo apt-get install -y make
-
-      - name: Build & Tag (CI Mode)
-        run: make ci
-
-      - name: Security Scan (All Images)
-        run: make scan
 
       - name: Log in to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -125,50 +177,50 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      - name: Publish to Docker Hub (New Repo)
+      - name: Publish to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           REPO="${{ secrets.DOCKER_HUB_USER }}/gemini-cli-toolbox"
+          TAG="${{ steps.tag.outputs.tag }}"
           
-          # --- Stable ---
-          # Tags: :latest-stable, :X.Y.Z-stable
-          docker tag gemini-cli-toolbox/cli:latest $REPO:latest-stable
+          # Stable
+          docker tag gemini-cli-toolbox/cli:$TAG $REPO:latest-stable
           docker push $REPO:latest-stable
-          
-          VERSION=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli:latest gemini --version | tr -d '\r')
-          docker tag gemini-cli-toolbox/cli:latest $REPO:$VERSION-stable
+          VERSION=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli:$TAG gemini --version | tr -d '\r')
+          docker tag gemini-cli-toolbox/cli:$TAG $REPO:$VERSION-stable
           docker push $REPO:$VERSION-stable
 
-          # --- Preview ---
-          # Tags: :latest-preview, :X.Y.Z-preview
-          docker tag gemini-cli-toolbox/cli-preview:latest $REPO:latest-preview
+          # Preview
+          docker tag gemini-cli-toolbox/cli-preview:$TAG $REPO:latest-preview
           docker push $REPO:latest-preview
-          
-          PREVIEW_VER=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli-preview:latest gemini --version | tr -d '\r')
-          docker tag gemini-cli-toolbox/cli-preview:latest $REPO:$PREVIEW_VER-preview
+          PREVIEW_VER=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli-preview:$TAG gemini --version | tr -d '\r')
+          docker tag gemini-cli-toolbox/cli-preview:$TAG $REPO:$PREVIEW_VER-preview
           docker push $REPO:$PREVIEW_VER-preview
 
-          # --- Hub ---
-
-          # Tags: :latest-hub, :X.Y.Z-hub (Hub versioning is independent, but we'll use a date or static version for now or just latest)
-          # For simplicity and since it's an internal tool, we just push latest-hub for now.
-          docker tag gemini-cli-toolbox/hub:latest $REPO:latest-hub
+          # Hub
+          docker tag gemini-cli-toolbox/hub:$TAG $REPO:latest-hub
           docker push $REPO:latest-hub
 
-      - name: Prepare Docker Hub README
+      - name: Update Docker Hub Description
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: make docker-readme
+        run: |
+          make docker-readme
+          # Use a dedicated action or curl for description if needed, but for now we keep it simple
+          # (Reusing the peter-evans action would require re-auth or separate step)
 
-      - name: Update Docker Hub Description (New Repo)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: peter-evans/dockerhub-description@v4
-        continue-on-error: true
-        with:
-          username: ${{ secrets.DOCKER_HUB_USER }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-          repository: ${{ secrets.DOCKER_HUB_USER }}/gemini-cli-toolbox
-          short-description: "Gemini CLI sandbox: Multi-Profile, Remote Access, Docker, VS Code Companion, Git Worktree."
-          readme-filepath: ./README_DOCKER.md
+  # Gatekeeper job
+  all-checks-passed:
+    name: All Checks Passed
+    needs: [lint, build-and-test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check dependency status
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - name: Success
+        run: echo "All checks passed successfully."
+
 
   # Gatekeeper job for branch protection.
   # This job depends on all other jobs. In GitHub settings, only this job 
