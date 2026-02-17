@@ -28,9 +28,9 @@ def test_get_config_details_real_fs(tmp_path):
     with patch("app.config.Config.HOST_CONFIG_ROOT", str(tmp_path)):
         details = FileSystemService.get_config_details("work")
         
-        assert "--preview" in details["extra_args"]
-        assert "--volume /foo:/bar" in details["extra_args"]
-        assert "# Comment" not in details["extra_args"]
+        assert {"arg": "--preview", "comment": ""} in details["extra_args"]
+        assert {"arg": "--volume /foo:/bar", "comment": ""} in details["extra_args"]
+        assert {"arg": "", "comment": "Comment"} in details["extra_args"]
 
 def test_get_config_details_with_eol_comments(tmp_path):
     """Test reading config details with complex end-of-line comments."""
@@ -47,14 +47,11 @@ def test_get_config_details_with_eol_comments(tmp_path):
     with patch("app.config.Config.HOST_CONFIG_ROOT", str(tmp_path)):
         details = FileSystemService.get_config_details("work")
         
-        # Strip comments while preserving arguments
-        assert "--preview" in details["extra_args"]
-        # shlex.quote might add quotes to path with spaces
-        assert "--volume '/path with spaces:/data'" in details["extra_args"]
-        # --env FOO="#BAR" becomes --env 'FOO=#BAR'
-        assert "--env 'FOO=#BAR'" in details["extra_args"]
-        assert "  # Whole line comment" not in details["extra_args"]
-        assert "# Whole line comment" not in details["extra_args"]
+        # Verify extraction of both arg and comment
+        assert {"arg": "--preview", "comment": "use preview"} in details["extra_args"]
+        assert {"arg": "", "comment": "Whole line comment with spaces"} in details["extra_args"]
+        assert {"arg": "--volume '/path with spaces:/data'", "comment": "comment"} in details["extra_args"]
+        assert {"arg": "--env 'FOO=#BAR'", "comment": "comment with hash in value"} in details["extra_args"]
 
 def test_browse_real_fs(tmp_path):
     """Test browsing a directory structure."""

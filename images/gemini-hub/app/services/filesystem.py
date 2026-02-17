@@ -29,7 +29,7 @@ class FileSystemService:
 
     @staticmethod
     def get_config_details(name: str) -> Dict[str, Any]:
-        """Reads extra-args from a profile."""
+        """Reads extra-args from a profile and parses them into arg/comment pairs."""
         if not name:
             return {}
         
@@ -40,20 +40,48 @@ class FileSystemService:
         if os.path.isfile(extra_args_path):
             try:
                 with open(extra_args_path, 'r') as f:
-                    args = []
+                    args_info = []
                     for line in f:
-                        line = line.strip()
-                        if line and not line.startswith('#'):
-                            try:
-                                # Use shlex to safely strip end-of-line comments while preserving quotes
-                                tokens = shlex.split(line, comments=True)
-                                if tokens:
-                                    # Re-quote tokens to ensure they remain valid shell arguments
-                                    args.append(" ".join(shlex.quote(t) for t in tokens))
-                            except ValueError:
-                                # If shlex fails (e.g. unclosed quote), fallback to whole line
-                                args.append(line)
-                    details["extra_args"] = args
+                        raw_line = line.strip()
+                        if not raw_line:
+                            continue
+                        
+                        # Handle whole-line comments
+                        if raw_line.startswith('#'):
+                            args_info.append({"arg": "", "comment": raw_line[1:].strip()})
+                            continue
+                        
+                        try:
+                            # 1. Identify the effective tokens (stripping comments)
+                            tokens = shlex.split(raw_line, comments=True)
+                            if not tokens:
+                                # This handles cases like "   # comment"
+                                args_info.append({"arg": "", "comment": raw_line.lstrip().lstrip('#').strip()})
+                                continue
+                            
+                            arg_part = " ".join(shlex.quote(t) for t in tokens)
+                            
+                            # 2. Extract the comment by finding the first # not in a quote
+                            comment_part = ""
+                            for i in range(len(raw_line)):
+                                if raw_line[i] == '#':
+                                    before = raw_line[:i]
+                                    try:
+                                        # If splitting the 'before' part matches our tokens, 
+                                        # then this '#' is indeed the comment starter.
+                                        if shlex.split(before) == tokens:
+                                            comment_part = raw_line[i+1:].strip()
+                                            break
+                                    except ValueError:
+                                        # Unclosed quote in 'before', so this # is inside a quote
+                                        continue
+                            
+                            args_info.append({"arg": arg_part, "comment": comment_part})
+                        except ValueError:
+                            # Fallback for malformed lines
+                            args_info.append({"arg": raw_line, "comment": ""})
+                            
+                    details["extra_args"] = args_info
             except Exception as e:
                 logger.error(f"Error reading extra-args for {name}: {e}")
                 
