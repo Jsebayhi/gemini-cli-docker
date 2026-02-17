@@ -155,6 +155,12 @@ The Gemini Hub acts as a remote extension of the `gemini-toolbox` CLI. To ensure
 *   **Drift Prevention:** When a new flag is added to the CLI, it is a **required task** to implement the same option in the Hub's launch wizard and backend launcher service within the same PR.
 *   **Coverage:** This includes toggles for security (Docker, IDE), image variants (Preview), and isolation modes (Worktrees).
 
+## 7. Security Standards
+
+### 7.1 Security Scanning (Trivy)
+To maintain a high security posture, this component undergoes automated security scans via `make scan`. 
+All suppressions in `.trivyignore` must adhere to the project-wide **TTL and Justification Policy** defined in the root [CONTRIBUTING.md](../../../docs/CONTRIBUTING.md).
+
 
 
 ### 5.7 File System Testing

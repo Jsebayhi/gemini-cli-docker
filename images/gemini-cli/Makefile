@@ -24,10 +24,10 @@ help:
 	@echo "  make help     : Show this help message"
 
 build:
-	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	docker build --build-arg BASE_TAG=$(IMAGE_TAG) -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
 rebuild:
-	docker build --no-cache -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	docker build --build-arg BASE_TAG=$(IMAGE_TAG) --no-cache -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
 tag-version:
 	@VERSION=$$(docker run --rm --entrypoint="" $(IMAGE_NAME):$(IMAGE_TAG) gemini --version | tr -d '\r'); \
@@ -46,4 +46,5 @@ ci: rebuild
 scan:
 	@echo ">> Scanning $(IMAGE_NAME):$(IMAGE_TAG)..."
 	docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-		aquasec/trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed $(IMAGE_NAME):$(IMAGE_TAG)
+		-v "$(shell pwd)/../../.trivyignore:/.trivyignore" \
+		aquasec/trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed --ignorefile /.trivyignore $(IMAGE_NAME):$(IMAGE_TAG)

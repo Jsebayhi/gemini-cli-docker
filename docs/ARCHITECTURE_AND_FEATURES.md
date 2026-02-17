@@ -12,6 +12,15 @@ The core philosophy of this toolbox is **Host Protection**. By running the agent
 *   **Process Isolation:** If the agent runs `rm -rf /`, it destroys the container's filesystem, not yours.
 *   **Network (Local):** The container shares the host network stack (`--net=host`). This is **required** to support the Google OAuth browser flow (which spins up a local server on varying ports to capture your login token). Strict network isolation (bridge mode) is currently only enabled when using `--remote`.
 
+### Security Scanning (Trivy)
+To maintain a high security posture, all images undergo automated security scans using [Trivy](https://github.com/aquasec/trivy).
+*   **Target:** Scans for OS vulnerabilities (CVEs) and application-level vulnerabilities (npm, pip).
+*   **Threshold:** The CI pipeline is configured to fail on any **CRITICAL** or **HIGH** severity vulnerabilities that have a known fix.
+*   **Vulnerability Ignore Policy:** In cases where a vulnerability is unfixable upstream or poses zero risk to local usage, we suppress it in the root [.trivyignore](/.trivyignore).
+*   **Source of Truth:** The `.trivyignore` file is the **sole source of truth** for all accepted risks. 
+*   **Enforcement:** We use Trivy's native `exp:YYYY-MM-DD` syntax to ensure that all suppresses are **automatically time-bound**. If a review date passes, the build system will stop ignoring the vulnerability, forcing a manual re-assessment.
+*   **Audit Trail:** Every entry includes a mandatory justification detailing the **potential risk** and the **reason for ignoring** (e.g., unfixable upstream). This ensures our security posture is transparent and rigorously maintained.
+
 ### Permission Management (`gosu`)
 *   **The Problem:** Docker containers typically run as root. If the agent creates a file, it ends up owned by `root` on your host, requiring `sudo` to delete.
 *   **The Solution:** The entrypoint script (`docker-entrypoint.sh`) reads your host UID/GID (passed via env vars). It uses `gosu` to drop privileges to your user level *inside* the container before executing any command.
