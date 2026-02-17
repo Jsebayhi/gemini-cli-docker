@@ -21,13 +21,11 @@ This project strictly enforces the pattern that documentation (`README.md`, `GEM
 
 ## Architecture Decision Records (ADR)
 *   **Location:** `adr/`
-*   **Rule (Immutability):** ADRs are **immutable historical logs**. Do not modify the "Decision" or "Context" of an existing ADR to reflect a new direction.
-*   **Process:**
-    1.  Propose a significant architectural change.
-    2.  Write a **NEW** ADR documenting the new direction.
-    3.  Update the **Status** of the old ADR to "Superseded by [ADR-XXXX]".
-    4.  **Preserve History:** Do NOT remove previous "Supersedes" lines from an old ADR. Maintain the full chain (e.g., "Supersedes ADR-0001" followed by "Superseded by ADR-0038") to allow tracing the architectural evolution.
-    5.  Implement the change.
+*   **Best Practices:** Strictly follow the [ADR Best Practices Guide](./adr_best_practices.md).
+*   **Key Rules:**
+    *   ADRs are **immutable historical logs**. Never edit a merged decision.
+    *   Use the **Supersede** pattern for new directions.
+    *   Analyze at least **3 alternatives** with explicit reasons for rejection.
 
 ### ADR Template
 > **Rule for Greenfield:** If creating an ADR for a NEW system or foundational pattern, focus on the **establishment** of the standard. Do not invent a "legacy" state if one did not exist in the tracked history.
