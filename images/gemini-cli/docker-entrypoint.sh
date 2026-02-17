@@ -15,9 +15,8 @@ main() {
     [ "$DEBUG_MODE" = "true" ] && LOG_LEVEL=3
 
     _log() {
-        local level_name="$1"
-        local level_val="$2"
-        shift 2
+        local level_val="$1"
+        shift
         if [ "$LOG_LEVEL" -ge "$level_val" ]; then
             if [ "$level_val" -eq 0 ]; then
                 echo "Error: $*" >&2
@@ -29,10 +28,10 @@ main() {
         fi
     }
 
-    log_error() { _log "ERROR" 0 "$@"; }
-    log_warn()  { _log "WARN"  1 "$@"; }
-    log_info()  { _log "INFO"  2 "$@"; }
-    log_debug() { _log "DEBUG" 3 "$@"; }
+    log_error() { _log 0 "$@"; }
+    log_warn()  { _log 1 "$@"; }
+    log_info()  { _log 2 "$@"; }
+    log_debug() { _log 3 "$@"; }
 
     # Create Group if missing
     if ! getent group "$TARGET_GID" >/dev/null 2>&1; then
