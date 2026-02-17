@@ -17,12 +17,14 @@ Every entry in the project-wide `.trivyignore` MUST be auditable and tool-enforc
 *   **Cycle:** Use a **90-day** review cycle from the date of detection/suppression.
 
 ### 2.2 Justification Requirements
-A suppression is only valid if it includes two components in a preceding comment:
-1.  **Risk Explanation:** A description of the potential impact and why it is low in our context.
-2.  **Ignore Reason:** Why a fix is not currently possible (e.g., Unfixable Upstream, OS-Level Delay).
+A suppression is only valid if it includes three components in preceding comments:
+1.  **Header:** The library name and vulnerability title (e.g., `# brace-expansion: DoS in index.js`).
+2.  **Risk Explanation:** A description of the potential impact and why it is low in our context.
+3.  **Ignore Reason:** Why a fix is not currently possible (e.g., Unfixable Upstream, OS-Level Delay).
 
 Example:
 ```text
+# brace-expansion: juliangruber brace-expansion index.js expand redos (LOW)
 # Risk: Denial of Service in local CLI (low impact). 
 # Reason: Upstream fix pending in @google/gemini-cli.
 CVE-2026-24001 exp:2026-05-17
