@@ -1,5 +1,14 @@
 IMAGE_NAME := gemini-cli-toolbox/base
-IMAGE_TAG := latest
+
+# Detect Branch and Suffix Tag
+CURRENT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+SAFE_BRANCH := $(shell echo $(CURRENT_BRANCH) | sed 's/[^a-zA-Z0-9]/-/g')
+
+ifeq ($(CURRENT_BRANCH),main)
+    IMAGE_TAG := latest
+else
+    IMAGE_TAG := latest-$(SAFE_BRANCH)
+endif
 
 .DEFAULT_GOAL := help
 
