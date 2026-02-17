@@ -32,6 +32,30 @@ def test_get_config_details_real_fs(tmp_path):
         assert "--volume /foo:/bar" in details["extra_args"]
         assert "# Comment" not in details["extra_args"]
 
+def test_get_config_details_with_eol_comments(tmp_path):
+    """Test reading config details with complex end-of-line comments."""
+    profile_dir = tmp_path / "work"
+    profile_dir.mkdir()
+    extra_args_file = profile_dir / "extra-args"
+    extra_args_file.write_text(
+        "--preview # use preview\n"
+        "  # Whole line comment with spaces\n"
+        "--volume \"/path with spaces:/data\" # comment\n"
+        "--env FOO=\"#BAR\" # comment with hash in value"
+    )
+    
+    with patch("app.config.Config.HOST_CONFIG_ROOT", str(tmp_path)):
+        details = FileSystemService.get_config_details("work")
+        
+        # Strip comments while preserving arguments
+        assert "--preview" in details["extra_args"]
+        # shlex.quote might add quotes to path with spaces
+        assert "--volume '/path with spaces:/data'" in details["extra_args"]
+        # --env FOO="#BAR" becomes --env 'FOO=#BAR'
+        assert "--env 'FOO=#BAR'" in details["extra_args"]
+        assert "  # Whole line comment" not in details["extra_args"]
+        assert "# Whole line comment" not in details["extra_args"]
+
 def test_browse_real_fs(tmp_path):
     """Test browsing a directory structure."""
     root = tmp_path / "workspace"

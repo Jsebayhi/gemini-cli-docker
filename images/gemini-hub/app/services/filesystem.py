@@ -1,4 +1,5 @@
 import os
+import shlex
 import logging
 from typing import List, Dict, Any
 from app.config import Config
@@ -43,7 +44,15 @@ class FileSystemService:
                     for line in f:
                         line = line.strip()
                         if line and not line.startswith('#'):
-                            args.append(line)
+                            try:
+                                # Use shlex to safely strip end-of-line comments while preserving quotes
+                                tokens = shlex.split(line, comments=True)
+                                if tokens:
+                                    # Re-quote tokens to ensure they remain valid shell arguments
+                                    args.append(" ".join(shlex.quote(t) for t in tokens))
+                            except ValueError:
+                                # If shlex fails (e.g. unclosed quote), fallback to whole line
+                                args.append(line)
                     details["extra_args"] = args
             except Exception as e:
                 logger.error(f"Error reading extra-args for {name}: {e}")
