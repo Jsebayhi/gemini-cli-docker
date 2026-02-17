@@ -365,8 +365,10 @@ main() {
     if [ -n "$arg_name" ]; then
         project_name="$arg_name"
     else
-        project_name=$(basename "$project_dir" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
+        project_name=$(basename "$project_dir")
     fi
+    # Sanitize: lowercase and replace non-alphanumeric (except hyphens) with hyphens
+    project_name=$(echo "$project_name" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g')
 
     local session_type="geminicli"
     if [ "$use_bash" = true ]; then session_type="bash"; fi

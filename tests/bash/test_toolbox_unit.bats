@@ -634,3 +634,16 @@ EOF
     assert_failure
     assert_output --partial "Error: 'realpath' is required"
 }
+
+@test "main: container name sanitization with --name" {
+    source_toolbox
+    mock_docker
+    
+    # Mock git to avoid --worktree requirement errors if we were using it, 
+    # but here we just test if --name is sanitized in the container name.
+    run main --name "fix/my-bug" --bash
+    assert_success
+    # The container name should be sanitized (slashes to dashes)
+    run grep "gem-fix-my-bug-bash-" "$MOCK_DOCKER_LOG"
+    assert_success
+}
