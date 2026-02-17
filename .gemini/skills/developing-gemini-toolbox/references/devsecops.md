@@ -11,16 +11,22 @@ Security is not a final step; it is an integrated part of development.
 Suppressing a vulnerability is a **governed risk decision**, not a shortcut.
 
 ### 2.1 The TTL Policy (Time-To-Live)
-Every entry in the project-wide `.trivyignore` MUST be auditable.
+Every entry in the project-wide `.trivyignore` MUST be auditable and tool-enforced.
 *   **Per-CVE Governance:** Each CVE must be listed individually.
-*   **Expiration Date:** Every entry MUST include a `# Review Required By: YYYY-MM-DD` comment.
+*   **Enforceable Expiry:** Every entry MUST use Trivy's native expiry syntax: `CVE-XXXX exp:YYYY-MM-DD`. This ensures that the ignore is automatically revoked after the date, preventing permanent security debt.
 *   **Cycle:** Use a **90-day** review cycle from the date of detection/suppression.
 
 ### 2.2 Justification Requirements
-A suppression is only valid if it meets one of these criteria:
-1.  **Unfixable Upstream:** No fixed version exists, and the vulnerability is in a third-party dependency (e.g., `stdlib`, `npm` sub-dependency).
-2.  **Zero-Risk Context:** The vulnerability exists but is not exploitable in our specific environment (e.g., a DoS in a local dev tool that doesn't expose a public network service).
-3.  **OS-Level Delay:** A fix exists but hasn't been backported to the base image's OS release (e.g., Debian Bookworm).
+A suppression is only valid if it includes two components in a preceding comment:
+1.  **Risk Explanation:** A description of the potential impact and why it is low in our context.
+2.  **Ignore Reason:** Why a fix is not currently possible (e.g., Unfixable Upstream, OS-Level Delay).
+
+Example:
+```text
+# Risk: Denial of Service in local CLI (low impact). 
+# Reason: Upstream fix pending in @google/gemini-cli.
+CVE-2026-24001 exp:2026-05-17
+```
 
 ## 3. Transparency & Documentation
 *   **The .trivyignore Source of Truth:** The `.trivyignore` file is the exclusive repository for security risk acceptance. 

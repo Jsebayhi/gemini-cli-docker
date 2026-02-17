@@ -17,7 +17,9 @@ To maintain a high security posture, all images undergo automated security scans
 *   **Target:** Scans for OS vulnerabilities (CVEs) and application-level vulnerabilities (npm, pip).
 *   **Threshold:** The CI pipeline is configured to fail on any **CRITICAL** or **HIGH** severity vulnerabilities that have a known fix.
 *   **Vulnerability Ignore Policy:** In cases where a vulnerability is unfixable upstream or poses zero risk to local usage, we suppress it in the root [.trivyignore](/.trivyignore).
-*   **Source of Truth:** The `.trivyignore` file is the **sole source of truth** for all accepted risks. Every entry there includes a mandatory TTL (Time-To-Live) and a detailed justification for why the risk is currently accepted. Users and auditors should refer to that file for the current security posture.
+*   **Source of Truth:** The `.trivyignore` file is the **sole source of truth** for all accepted risks. 
+*   **Enforcement:** We use Trivy's native `exp:YYYY-MM-DD` syntax to ensure that all suppresses are **automatically time-bound**. If a review date passes, the build system will stop ignoring the vulnerability, forcing a manual re-assessment.
+*   **Audit Trail:** Every entry includes a mandatory justification detailing the **potential risk** and the **reason for ignoring** (e.g., unfixable upstream). This ensures our security posture is transparent and rigorously maintained.
 
 ### Permission Management (`gosu`)
 *   **The Problem:** Docker containers typically run as root. If the agent creates a file, it ends up owned by `root` on your host, requiring `sudo` to delete.

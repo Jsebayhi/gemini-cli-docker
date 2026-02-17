@@ -161,8 +161,8 @@ The Gemini Hub acts as a remote extension of the `gemini-toolbox` CLI. To ensure
 To maintain a high security posture, this component undergoes automated security scans via `make scan`.
 *   **Policy:** The build pipeline fails on any **CRITICAL** or **HIGH** severity vulnerabilities with a known fix.
 *   **Governance (.trivyignore):** Suppressing a vulnerability is a high-gravity decision.
-    *   **TTL Requirement:** Every entry in `.trivyignore` **must** include a `# Review Required By: YYYY-MM-DD` comment (90-day cycle).
-    *   **Justification:** A brief comment explaining why the risk is acceptable (e.g., "unfixable upstream", "zero-risk to local dev usage") is mandatory.
+    *   **Enforceable TTL:** Every entry in `.trivyignore` **must** use Trivy's native `exp:YYYY-MM-DD` syntax (90-day cycle) to prevent permanent ignores.
+    *   **Justification:** A comment explaining both the **potential risk** and the **specific reason for ignoring** (e.g., "unfixable upstream", "zero-risk to local dev usage") is mandatory.
 
 
 
