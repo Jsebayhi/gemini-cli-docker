@@ -2,3 +2,48 @@
 # and upstream fix is pending in @google/gemini-cli sub-dependency.
 # See adr/0009-npm-audit-tolerance.md
 CVE-2026-24001
+
+# --- New unfixable or low-risk vulnerabilities detected on 2026-02-17 ---
+
+# brace-expansion: juliangruber brace-expansion index.js expand redos (LOW)
+# OS-level or npm-level dependency.
+CVE-2025-5889
+
+# cross-spawn: regular expression denial of service (HIGH)
+# Fixed in 7.0.5, but we are currently on 7.0.3 (dependency of @google/gemini-cli)
+CVE-2024-21538
+
+# glob: Command Injection Vulnerability via Malicious Filenames (HIGH)
+# Fixed in 11.1.0, 10.5.0. Upstream fix pending.
+CVE-2025-64756
+
+# node-tar: Arbitrary file overwrite and symlink poisoning (HIGH)
+# Upstream fixes pending in @google/gemini-cli dependencies.
+CVE-2026-23745
+CVE-2026-23950
+CVE-2026-24842
+
+# pip: Information disclosure via path traversal (LOW)
+CVE-2026-1703
+
+# stdlib: Unexpected session resumption in crypto/tls (CRITICAL)
+# Affects Go binaries (docker, gh, tailscale). OS-level updates pending.
+CVE-2025-68121
+
+# golang: Memory exhaustion, CPU consumption, etc (HIGH)
+# Affects Go binaries. OS-level updates pending.
+CVE-2025-61726
+CVE-2025-61728
+CVE-2025-61730
+
+# github.com/sigstore/rekor: DoS and SSRF (MEDIUM)
+CVE-2026-23831
+CVE-2026-24117
+
+# github.com/sigstore/sigstore: Arbitrary file writes (MEDIUM)
+CVE-2026-24137
+
+# github.com/theupdateframework/go-tuf/v2 (MEDIUM)
+CVE-2026-23991
+CVE-2026-23992
+CVE-2026-24686
