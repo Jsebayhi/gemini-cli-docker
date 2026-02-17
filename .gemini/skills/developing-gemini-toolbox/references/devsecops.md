@@ -23,8 +23,9 @@ A suppression is only valid if it meets one of these criteria:
 3.  **OS-Level Delay:** A fix exists but hasn't been backported to the base image's OS release (e.g., Debian Bookworm).
 
 ## 3. Transparency & Documentation
-*   **Risk Acceptance:** Significant risk acceptances (like CRITICAL vulnerabilities) MUST be documented in `docs/ARCHITECTURE_AND_FEATURES.md`.
-*   **Contributing:** All contributors MUST be informed of this policy in `docs/CONTRIBUTING.md`.
+*   **The .trivyignore Source of Truth:** The `.trivyignore` file is the exclusive repository for security risk acceptance. 
+*   **Justification:** Every suppression MUST include a concise justification directly in the `.trivyignore` file, explaining why the risk is acceptable (e.g., "unfixable upstream").
+*   **Visibility:** Refer users to `.trivyignore` in high-level documentation if they wish to audit the project's security exceptions.
 
 ## 4. CI/CD Integration
 *   **Delegation:** The GitHub Action MUST delegate scanning to the `make scan` target of each component. Do not use hardcoded Trivy actions with separate logic.

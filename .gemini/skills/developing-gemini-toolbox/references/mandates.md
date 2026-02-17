@@ -8,8 +8,8 @@
 
 ## 🔐 Security-First & Risk Governance
 **Security is Non-Negotiable.**
-*   **Zero-Debt Suppressions:** Never suppress a vulnerability to simply "get it done". Every suppression must be justified and time-bound via the [DevSecOps Governance](devsecops.md).
-*   **Documentation:** If you accept a risk, you must document it in the architectural features.
+*   **Zero-Debt Suppressions:** Never suppress a vulnerability to simply "get it done". Every suppression must be justified and time-bound directly within `.trivyignore`.
+*   **Single Source of Truth:** Document all risk acceptances and justifications exclusively in `.trivyignore`. Do not duplicate technical vulnerability details in architectural documentation.
 
 ## 🔍 Mandate for Clarity (Proportional to Ambiguity)
 **Primary Objective:** Avoid error due to unspoken assumptions.
