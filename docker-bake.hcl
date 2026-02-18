@@ -15,6 +15,9 @@ target "base" {
 
 target "hub" {
   context = "images/gemini-hub"
+  contexts = {
+    bin = "bin"
+  }
   tags = ["gemini-cli-toolbox/hub:${IMAGE_TAG}"]
   cache-from = ["type=gha"]
   cache-to = ["type=gha,mode=max"]
@@ -24,6 +27,7 @@ target "cli" {
   context = "images/gemini-cli"
   contexts = {
     "gemini-cli-toolbox/base:${IMAGE_TAG}" = "target:base"
+    bin = "bin"
   }
   args = {
     BASE_TAG = "${IMAGE_TAG}"
@@ -37,6 +41,7 @@ target "cli-preview" {
   context = "images/gemini-cli-preview"
   contexts = {
     "gemini-cli-toolbox/base:${IMAGE_TAG}" = "target:base"
+    bin = "bin"
   }
   args = {
     BASE_TAG = "${IMAGE_TAG}"

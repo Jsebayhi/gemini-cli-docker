@@ -25,27 +25,30 @@ jobs:
       - name: Install Ruff
         run: pip install ruff
 
-      - name: Validate Bash Scripts (Syntax)
+      - name: Validate Bash Scripts
         run: |
+          echo "::group::Syntax Check"
           bash -n bin/gemini-toolbox bin/gemini-hub
           find images -name "*.sh" -print0 | xargs -0 -I {} bash -n "{}"
-
-      - name: Validate Bash Scripts (Lint)
-        run: |
-          # ubuntu-latest has shellcheck pre-installed
+          echo "::endgroup::"
+          
+          echo "::group::ShellCheck"
           shellcheck bin/gemini-toolbox bin/gemini-hub
           find images -name "*.sh" -print0 | xargs -0 shellcheck
+          echo "::endgroup::"
 
-      - name: Validate Python (Syntax & Lint)
+      - name: Validate Python
         run: |
+          echo "::group::Ruff & Syntax"
           find images/gemini-hub -name "*.py" -exec python -m py_compile {} +
           ruff check images/gemini-hub
+          echo "::endgroup::"
 
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -63,15 +66,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Prepare Artifacts
-        run: |
-          cp bin/gemini-toolbox images/gemini-hub/
-          make deps-bash
-
-      - name: Bake Images (Tests & Hub)
+      - name: Bake Images (Base & Tests)
         uses: docker/bake-action@v4
         with:
-          targets: hub, hub-test, bash-test, base
+          targets: base, hub, hub-test, bash-test
           set: |
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
@@ -80,8 +78,10 @@ jobs:
 
       - name: Run Tests (Parallel)
         run: |
+          echo "::group::Parallel Test Execution"
+          mkdir -p coverage/bash coverage/python
+          
           # Run Bash Automated Tests
-          mkdir -p coverage/bash
           docker run --rm \
             --cap-add=SYS_PTRACE \
             -v "$(pwd):/code" \
@@ -94,7 +94,6 @@ jobs:
           BASH_PID=$!
 
           # Run Hub Automated Tests
-          mkdir -p coverage/python
           docker run --rm \
             -v "$(pwd)/coverage/python:/coverage" \
             gemini-hub-test:latest \
@@ -105,14 +104,23 @@ jobs:
             tests/unit tests/integration > tests-hub.log 2>&1 &
           HUB_PID=$!
 
-          # Wait for both
           wait $BASH_PID || (cat tests-bash.log && exit 1)
           wait $HUB_PID || (cat tests-hub.log && exit 1)
+          echo "::endgroup::"
           
-          echo "Bash Tests Output:"
+          echo "::group::Bash Test Logs"
           cat tests-bash.log
-          echo "Hub Tests Output:"
+          echo "::endgroup::"
+          
+          echo "::group::Hub Test Logs"
           cat tests-hub.log
+          echo "::endgroup::"
+
+      - name: Upload Coverage Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage/
 
       - name: Bake Images (Apps)
         uses: docker/bake-action@v4
@@ -141,34 +149,15 @@ jobs:
             wait "$pid" || FAIL=1
           done
           
-          # Print logs if failed
           if [ $FAIL -ne 0 ]; then
-            cat scan-*.log
+            for f in scan-*.log; do
+               echo "::group::Scan Log: $f"
+               cat "$f"
+               echo "::endgroup::"
+            done
             exit 1
           fi
           echo "All scans passed."
-
-      - name: Generate Bypass Token
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        id: generate_token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      - name: Compute Global Coverage & Update Badge
-        if: always()
-        run: |
-          # Use the pre-installed python to run the script
-          python3 scripts/update_coverage.py
-
-      - name: Commit Coverage Badge Update
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          token: ${{ steps.generate_token.outputs.token || github.token }}
-          commit_message: "docs: update coverage badge [skip ci]"
-          file_pattern: README.md
 
       - name: Log in to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -205,10 +194,42 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           make docker-readme
-          # Use a dedicated action or curl for description if needed, but for now we keep it simple
-          # (Reusing the peter-evans action would require re-auth or separate step)
 
-  # Gatekeeper job
+  update-coverage-badge:
+    name: Update Coverage Badge
+    needs: [build-and-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Coverage Reports
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage/
+
+      - name: Generate Bypass Token
+        id: generate_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Compute Global Coverage & Update Badge
+        run: |
+          python3 scripts/update_coverage.py
+
+      - name: Commit Coverage Badge Update
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          token: ${{ steps.generate_token.outputs.token || github.token }}
+          commit_message: "docs: update coverage badge [skip ci]"
+          file_pattern: README.md
+
   all-checks-passed:
     name: All Checks Passed
     needs: [lint, build-and-test]
