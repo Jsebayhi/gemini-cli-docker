@@ -25,7 +25,7 @@ ifeq ($(ENABLE_ATTESTATIONS),true)
     BAKE_FLAGS := --builder $(BAKE_BUILDER) --load
 else
     BAKE_BUILDER := default
-    BAKE_FLAGS := --load
+    BAKE_FLAGS := --builder default --load
 endif
 
 .PHONY: help
@@ -133,7 +133,7 @@ setup-builder:
 	@if [ "$(BAKE_BUILDER)" = "gemini-builder" ]; then \
 		if ! docker buildx inspect gemini-builder > /dev/null 2>&1; then \
 			echo ">> Creating 'gemini-builder' (docker-container driver) for SLSA support..."; \
-			docker buildx create --name gemini-builder --driver docker-container --use; \
+			docker buildx create --name gemini-builder --driver docker-container; \
 		fi \
 	fi
 
@@ -145,7 +145,7 @@ build: setup-builder
 .PHONY: check-build
 check-build:
 	@echo ">> Rapid Validation (Build to cache, Builder: default)..."
-	docker buildx bake
+	docker buildx bake --builder default
 
 .PHONY: rebuild
 rebuild: setup-builder
