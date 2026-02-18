@@ -17,3 +17,8 @@ Implement a "Cost-Nothing" SLSA Level 3 equivalent security posture:
 1.  **Trust:** Users can verify that images truly originated from the project's `main` branch.
 2.  **Integrity:** The transparency log (Rekor) provides an immutable record of the build.
 3.  **Governance:** Compliance with modern DevSecOps standards (SLSA) with zero operational overhead.
+
+## Developer Experience (DX) Refinement
+To maintain high developer velocity, SLSA attestations (SBOM/Provenance) are **disabled by default** for local builds. 
+- **Reason:** Local Docker stores do not yet support loading attestations via the `--load` flag, which would force a slow export process or fail entirely.
+- **Implementation:** The `Makefile` defaults `ENABLE_ATTESTATIONS` to `false`, allowing instant local cache hits using the native Docker driver. Attestations are explicitly enabled only in the CI environment for official releases.
