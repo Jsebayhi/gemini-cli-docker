@@ -12,20 +12,22 @@ A modular "Gemini CLI Toolbox" repository containing multiple self-contained Doc
 | `bin/` | **User Interface.** Wrapper scripts (`gemini-toolbox`) that users invoke directly. |
 | `images/` | **Components.** Source code for each Docker image. |
 | `images/gemini-cli/` | **Gemini CLI.** [See Component Context](images/gemini-cli/GEMINI.md) |
-| `Makefile` | **Orchestrator.** Master makefile for global build tasks. |
+| `Makefile` | **Single Source of Truth.** Master makefile for all build, lint, and test tasks. |
+| `docker-bake.hcl` | **Build Orchestrator.** Declarative parallel build configuration. |
 
 ## 3. Global Workflows
 
-### Adding a New Tool
-1. Create `images/<new-tool>/`.
-2. Add `Dockerfile`, `Makefile`, and `GEMINI.md` specific to that tool.
-3. Add a wrapper script in `bin/`.
-4. Register the tool in the root `README.md`.
+### Building & Testing
+1.  **Local Development:** Use `make build-<tool>` or `make test-<tool>` from the root.
+2.  **Local CI:** Run `make local-ci` to execute linting, building, and testing in parity with the remote CI.
+3.  **Bake:** All Docker builds are orchestrated via `docker buildx bake`. Do not use `docker build` directly in scripts.
 
-### Global Build
-```bash
-make build
-```
+### CI/CD & Security
+*   **Parallelism:** The CI is optimized for < 3 minutes via parallel GHA jobs and Docker Bake caching.
+*   **SLSA Compliance:** All official images generate SBOMs and Provenance metadata.
+*   **Keyless Signing:** Images published to Docker Hub are signed using Cosign (OIDC) to ensure integrity.
+*   **Release Logic:** Official releases (signing/publishing) occur on any `main` branch event that is NOT a PR (e.g., merge, schedule).
+
 
 ## 4. Core Mandates
 
