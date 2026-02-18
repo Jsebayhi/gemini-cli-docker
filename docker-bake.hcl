@@ -6,12 +6,12 @@ variable "GEMINI_VERSION" {
   default = ""
 }
 
-# Default prefix for local builds.
+# Default prefix for local builds (matches main's sub-directory convention)
 variable "REPO_PREFIX" {
   default = "gemini-cli-toolbox"
 }
 
-# Internal flag to switch between Local (sub-repo) and Release (suffix) naming.
+# Internal flag to switch between Local (sub-repo) and Release (flat with suffix) naming.
 # Local: gemini-cli-toolbox/cli:latest
 # Release: jsebayhi/gemini-cli-toolbox:latest-stable
 variable "RELEASE_TYPE" {
@@ -103,11 +103,11 @@ target "hub-test" {
   inherits   = ["_common"]
   context    = "images/gemini-hub"
   dockerfile = "tests/Dockerfile"
-  tags       = ["gemini-hub-test:${IMAGE_TAG}"]
+  tags       = ["gemini-cli-toolbox/hub-test:${IMAGE_TAG}"]
 }
 
 target "bash-test" {
   inherits = ["_common"]
   context  = "tests/bash"
-  tags     = ["gemini-bash-tester:${IMAGE_TAG}"]
+  tags     = ["gemini-cli-toolbox/bash-test:${IMAGE_TAG}"]
 }

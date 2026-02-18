@@ -70,7 +70,7 @@ test-bash: setup-builder deps-bash
 		-v "$(shell pwd):/code" \
 		-w /code \
 		--entrypoint kcov \
-		gemini-bash-tester:${IMAGE_TAG} \
+		gemini-cli-toolbox/bash-test:${IMAGE_TAG} \
 		--include-path=/code/bin,/code/images \
 		/code/coverage/bash \
 		bats tests/bash
@@ -97,7 +97,7 @@ test-hub: setup-builder
 	mkdir -p coverage/python
 	docker run --rm \
 		-v "$(shell pwd)/coverage/python:/coverage" \
-		gemini-hub-test:${IMAGE_TAG} \
+		gemini-cli-toolbox/hub-test:${IMAGE_TAG} \
 		python3 -m pytest -n auto -vv \
 		--cov=app \
 		--cov-report=json:/coverage/coverage.json \
@@ -108,7 +108,7 @@ test-hub: setup-builder
 test-hub-ui:
 	@echo ">> Running Gemini Hub UI Tests (Playwright)..."
 	docker buildx bake $(BAKE_FLAGS) hub-test
-	docker run --rm gemini-hub-test:${IMAGE_TAG} python3 -m pytest -n auto --reruns 1 -vv tests/ui
+	docker run --rm gemini-cli-toolbox/hub-test:${IMAGE_TAG} python3 -m pytest -n auto --reruns 1 -vv tests/ui
 
 .PHONY: deps-bash
 deps-bash:
