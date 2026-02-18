@@ -189,6 +189,7 @@ jobs:
           set: |
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
+            REPO_PREFIX=${{ secrets.DOCKER_HUB_USER }}/gemini-cli-toolbox
             IMAGE_TAG=${{ steps.tag.outputs.tag }}
             ENABLE_ATTESTATIONS=true
           push: true
@@ -198,14 +199,15 @@ jobs:
         run: |
           # Fetch versions for tagging
           TAG="${{ steps.tag.outputs.tag }}"
+          REPO="${{ secrets.DOCKER_HUB_USER }}/gemini-cli-toolbox"
           VERSION=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli:$TAG gemini --version | tr -d '\r')
           PREVIEW_VER=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli-preview:$TAG gemini --version | tr -d '\r')
           
           # Use bake to push both with their respective versions
-          # We run them sequentially or via a custom bake call to ensure GEMINI_VERSION is applied
           docker buildx bake cli \
             --set "*.cache-from=type=gha" \
             --set "*.cache-to=type=gha,mode=max" \
+            --set "REPO_PREFIX=$REPO" \
             --set "IMAGE_TAG=$TAG" \
             --set "GEMINI_VERSION=$VERSION" \
             --set "ENABLE_ATTESTATIONS=true" \
@@ -214,6 +216,7 @@ jobs:
           docker buildx bake cli-preview \
             --set "*.cache-from=type=gha" \
             --set "*.cache-to=type=gha,mode=max" \
+            --set "REPO_PREFIX=$REPO" \
             --set "IMAGE_TAG=$TAG" \
             --set "GEMINI_VERSION=$PREVIEW_VER" \
             --set "ENABLE_ATTESTATIONS=true" \
@@ -222,21 +225,21 @@ jobs:
       - name: Sign Images (SLSA)
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
-          REPO="${{ secrets.DOCKER_HUB_USER }}/gemini-cli-toolbox"
           TAG="${{ steps.tag.outputs.tag }}"
+          REPO="${{ secrets.DOCKER_HUB_USER }}/gemini-cli-toolbox"
           
           # Stable (latest & version)
           VERSION=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli:$TAG gemini --version | tr -d '\r')
-          cosign sign --yes $REPO:latest-stable
-          cosign sign --yes $REPO:$VERSION-stable
+          cosign sign --yes $REPO/cli:$TAG
+          cosign sign --yes $REPO/cli:$VERSION
 
           # Preview (latest & version)
           PREVIEW_VER=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli-preview:$TAG gemini --version | tr -d '\r')
-          cosign sign --yes $REPO:latest-preview
-          cosign sign --yes $REPO:$PREVIEW_VER-preview
+          cosign sign --yes $REPO/cli-preview:$TAG
+          cosign sign --yes $REPO/cli-preview:$PREVIEW_VER
 
           # Hub
-          cosign sign --yes $REPO:latest-hub
+          cosign sign --yes $REPO/hub:$TAG
 
       - name: Update Docker Hub Description
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

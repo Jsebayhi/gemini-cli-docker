@@ -6,8 +6,9 @@ variable "GEMINI_VERSION" {
   default = ""
 }
 
-variable "DOCKER_HUB_REPO" {
-  default = "jsebayhi/gemini-cli-toolbox"
+# Default prefix for local builds. Overridden in CI for official releases.
+variable "REPO_PREFIX" {
+  default = "gemini-cli-toolbox"
 }
 
 # Set to true in CI to enable SBOM/Provenance
@@ -66,7 +67,7 @@ target "base" {
 target "hub" {
   inherits = ["_release", "_with_bin"]
   context  = "images/gemini-hub"
-  tags     = ["${DOCKER_HUB_REPO}:latest-hub"]
+  tags     = ["${REPO_PREFIX}/hub:${IMAGE_TAG}"]
 }
 
 target "cli" {
@@ -76,8 +77,8 @@ target "cli" {
     "gemini-cli-toolbox/base:${IMAGE_TAG}" = "target:base"
   }
   tags = [
-    "${DOCKER_HUB_REPO}:latest-stable",
-    GEMINI_VERSION != "" ? "${DOCKER_HUB_REPO}:${GEMINI_VERSION}-stable" : ""
+    "${REPO_PREFIX}/cli:${IMAGE_TAG}",
+    GEMINI_VERSION != "" ? "${REPO_PREFIX}/cli:${GEMINI_VERSION}" : ""
   ]
 }
 
@@ -88,8 +89,8 @@ target "cli-preview" {
     "gemini-cli-toolbox/base:${IMAGE_TAG}" = "target:base"
   }
   tags = [
-    "${DOCKER_HUB_REPO}:latest-preview",
-    GEMINI_VERSION != "" ? "${DOCKER_HUB_REPO}:${GEMINI_VERSION}-preview" : ""
+    "${REPO_PREFIX}/cli-preview:${IMAGE_TAG}",
+    GEMINI_VERSION != "" ? "${REPO_PREFIX}/cli-preview:${GEMINI_VERSION}" : ""
   ]
 }
 
