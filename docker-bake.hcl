@@ -10,6 +10,7 @@ group "default" {
 
 # --- Base Templates ---
 
+# Operational Efficiency (Cache & Args) - Essential for everyone
 target "_common" {
   args = {
     IMAGE_TAG = "${IMAGE_TAG}"
@@ -17,16 +18,19 @@ target "_common" {
   }
   cache-from = ["type=gha"]
   cache-to   = ["type=gha,mode=max"]
-  # SLSA Provenance & SBOM: Automated build metadata and package inventory
+}
+
+# Production Integrity (SLSA: Provenance & SBOM) - Only for released images
+target "_release" {
+  inherits = ["_common"]
   attest = [
     "type=provenance,mode=max",
     "type=sbom"
   ]
 }
 
-# Targets that need the bin/ directory context
+# Artifact Layer (bin/ directory)
 target "_with_bin" {
-  inherits = ["_common"]
   contexts = {
     bin = "bin"
   }
@@ -35,19 +39,19 @@ target "_with_bin" {
 # --- Real Targets ---
 
 target "base" {
-  inherits = ["_common"]
+  inherits = ["_release"]
   context  = "images/gemini-base"
   tags     = ["gemini-cli-toolbox/base:${IMAGE_TAG}"]
 }
 
 target "hub" {
-  inherits = ["_with_bin"]
+  inherits = ["_release", "_with_bin"]
   context  = "images/gemini-hub"
   tags     = ["gemini-cli-toolbox/hub:${IMAGE_TAG}"]
 }
 
 target "cli" {
-  inherits = ["_with_bin"]
+  inherits = ["_release", "_with_bin"]
   context  = "images/gemini-cli"
   contexts = {
     "gemini-cli-toolbox/base:${IMAGE_TAG}" = "target:base"
@@ -56,7 +60,7 @@ target "cli" {
 }
 
 target "cli-preview" {
-  inherits = ["_with_bin"]
+  inherits = ["_release", "_with_bin"]
   context  = "images/gemini-cli-preview"
   contexts = {
     "gemini-cli-toolbox/base:${IMAGE_TAG}" = "target:base"
@@ -64,6 +68,7 @@ target "cli-preview" {
   tags     = ["gemini-cli-toolbox/cli-preview:${IMAGE_TAG}"]
 }
 
+# Test Runners (Fast & Lean - No SLSA overhead)
 target "hub-test" {
   inherits   = ["_common"]
   context    = "images/gemini-hub"
