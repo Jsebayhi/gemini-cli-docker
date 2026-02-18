@@ -44,9 +44,9 @@ lint-python:
 test: test-bash test-hub
 
 .PHONY: test-bash
-test-bash: deps-bash
+test-bash: setup-builder deps-bash
 	@echo ">> Running Bash Automated Tests (Tag: ${IMAGE_TAG})..."
-	docker buildx bake bash-test
+	docker buildx bake --builder gemini-builder --load bash-test
 	mkdir -p coverage/bash
 	docker run --rm \
 		--cap-add=SYS_PTRACE \
@@ -59,9 +59,9 @@ test-bash: deps-bash
 		bats tests/bash
 
 .PHONY: test-hub
-test-hub:
+test-hub: setup-builder
 	@echo ">> Running Gemini Hub Tests (Unit & Integration, Tag: ${IMAGE_TAG})..."
-	docker buildx bake hub-test
+	docker buildx bake --builder gemini-builder --load hub-test
 	mkdir -p coverage/python
 	docker run --rm \
 		-v "$(shell pwd)/coverage/python:/coverage" \
@@ -95,35 +95,43 @@ deps-bash:
 
 # --- Build Targets ---
 
+# Ensure we use a builder that supports attestations (docker-container driver)
+.PHONY: setup-builder
+setup-builder:
+	@if ! docker buildx inspect gemini-builder > /dev/null 2>&1; then \
+		echo ">> Creating 'gemini-builder' (docker-container driver) for SLSA support..."; \
+		docker buildx create --name gemini-builder --driver docker-container --use; \
+	fi
+
 .PHONY: build
-build:
-	@echo ">> Building all images via Docker Bake..."
-	docker buildx bake
+build: setup-builder
+	@echo ">> Building all images via Docker Bake (Builder: gemini-builder)..."
+	docker buildx bake --builder gemini-builder --load
 
 .PHONY: build-base
-build-base:
+build-base: setup-builder
 	@echo ">> Building gemini-base..."
-	docker buildx bake base
+	docker buildx bake --builder gemini-builder --load base
 
 .PHONY: build-hub
-build-hub:
+build-hub: setup-builder
 	@echo ">> Building gemini-hub..."
-	docker buildx bake hub
+	docker buildx bake --builder gemini-builder --load hub
 
 .PHONY: build-cli
-build-cli:
+build-cli: setup-builder
 	@echo ">> Building gemini-cli..."
-	docker buildx bake cli
+	docker buildx bake --builder gemini-builder --load cli
 
 .PHONY: build-cli-preview
-build-cli-preview:
+build-cli-preview: setup-builder
 	@echo ">> Building gemini-cli-preview..."
-	docker buildx bake cli-preview
+	docker buildx bake --builder gemini-builder --load cli-preview
 
 .PHONY: build-test-images
-build-test-images:
+build-test-images: setup-builder
 	@echo ">> Building test runner images..."
-	docker buildx bake bash-test hub-test
+	docker buildx bake --builder gemini-builder --load bash-test hub-test
 
 # --- Security & Docs ---
 
