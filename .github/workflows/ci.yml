@@ -81,6 +81,7 @@ jobs:
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
             IMAGE_TAG=${{ steps.tag.outputs.tag }}
+            ENABLE_ATTESTATIONS=true
           load: true
 
       - name: Run Tests (Parallel)
@@ -138,6 +139,7 @@ jobs:
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
             IMAGE_TAG=${{ steps.tag.outputs.tag }}
+            ENABLE_ATTESTATIONS=true
           load: true
 
       - name: Security Scan (Parallel)

@@ -2,6 +2,11 @@ variable "IMAGE_TAG" {
   default = "latest"
 }
 
+# Set to true in CI to enable SBOM/Provenance
+variable "ENABLE_ATTESTATIONS" {
+  default = false
+}
+
 # --- Groups ---
 
 group "default" {
@@ -24,8 +29,8 @@ target "_common" {
 target "_release" {
   inherits = ["_common"]
   attest = [
-    "type=provenance,mode=max",
-    "type=sbom"
+    "type=provenance,mode=max,disabled=${!ENABLE_ATTESTATIONS}",
+    "type=sbom,disabled=${!ENABLE_ATTESTATIONS}"
   ]
 }
 

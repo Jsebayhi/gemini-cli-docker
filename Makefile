@@ -18,8 +18,10 @@ endif
 help:
 	@echo "Project Orchestration"
 	@echo "====================="
-	@echo "  make build         : Build ALL images (Parallel via Docker Bake)"
-	@echo "  make lint          : Run all linters (ShellCheck, Ruff)"
+	       @echo "  make build         : Build ALL images (Parallel via Docker Bake)"
+	       @echo "  make rebuild       : Force rebuild ALL images from scratch"
+	       @echo "  make lint          : Run all linters (ShellCheck, Ruff)"
+	
 	@echo "  make test          : Run all tests (Bash, Hub)"
 	@echo "  make local-ci      : Run everything (Lint + Build + Test)"
 	@echo "  make scan          : Run security scan (Trivy)"
@@ -107,6 +109,11 @@ setup-builder:
 build: setup-builder
 	@echo ">> Building all images via Docker Bake (Builder: gemini-builder)..."
 	docker buildx bake --builder gemini-builder --load
+
+.PHONY: rebuild
+rebuild: setup-builder
+	@echo ">> Rebuilding all images from scratch (no cache)..."
+	docker buildx bake --builder gemini-builder --load --no-cache
 
 .PHONY: build-base
 build-base: setup-builder
