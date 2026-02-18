@@ -38,6 +38,8 @@ target "_with_bin" {
 
 # --- Real Targets ---
 
+# Internal intermediate image (not released to public).
+# Inherits only cache settings to avoid SLSA overhead on non-public artifacts.
 target "base" {
   inherits = ["_common"]
   context  = "images/gemini-base"

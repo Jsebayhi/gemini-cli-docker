@@ -167,6 +167,9 @@ jobs:
           echo "All scans passed."
 
       - name: Log in to Docker Hub
+        # Official releases (signing/publishing) only occur on the trusted main branch.
+        # This covers: Merges, Direct Pushes, and Scheduled bi-weekly updates.
+        # We explicitly exclude PR events as they represent untrusted code.
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
