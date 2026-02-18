@@ -50,7 +50,7 @@ test-bash: deps-bash
 
 .PHONY: test-hub
 test-hub:
-	@echo ">> Running Gemini Hub Tests..."
+	@echo ">> Running Gemini Hub Tests (Unit & Integration)..."
 	docker buildx bake hub-test
 	mkdir -p coverage/python
 	docker run --rm \
@@ -61,6 +61,12 @@ test-hub:
 		--cov-report=json:/coverage/coverage.json \
 		--cov-fail-under=90 \
 		tests/unit tests/integration
+
+.PHONY: test-hub-ui
+test-hub-ui:
+	@echo ">> Running Gemini Hub UI Tests (Playwright)..."
+	docker buildx bake hub-test
+	docker run --rm gemini-hub-test:latest python3 -m pytest -n auto --reruns 1 -vv tests/ui
 
 .PHONY: deps-bash
 deps-bash:
