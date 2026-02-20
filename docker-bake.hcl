@@ -12,15 +12,13 @@ variable "REPO_PREFIX" {
 }
 
 # Internal flag to switch between Local (sub-repo) and Release (flat with suffix) naming.
-# Local: gemini-cli-toolbox/cli:latest
-# Release: jsebayhi/gemini-cli-toolbox:latest-stable
 variable "RELEASE_TYPE" {
   default = ""
 }
 
 # Set to true in CI to enable SBOM/Provenance
 variable "ENABLE_ATTESTATIONS" {
-  default = false
+  default = "false"
 }
 
 # --- Groups ---

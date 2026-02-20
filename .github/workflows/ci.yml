@@ -77,13 +77,14 @@ jobs:
 
       - name: Bake Images (Base & Tests)
         uses: docker/bake-action@v5
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          ENABLE_ATTESTATIONS: false
         with:
           targets: base, hub, hub-test, bash-test
           set: |
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
-            IMAGE_TAG=${{ steps.tag.outputs.tag }}
-            ENABLE_ATTESTATIONS=false
           load: true
 
       - name: Run Tests (Parallel)
@@ -135,13 +136,14 @@ jobs:
 
       - name: Bake Images (Apps)
         uses: docker/bake-action@v5
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          ENABLE_ATTESTATIONS: false
         with:
           targets: cli, cli-preview
           set: |
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
-            IMAGE_TAG=${{ steps.tag.outputs.tag }}
-            ENABLE_ATTESTATIONS=false
           load: true
 
       - name: Security Scan (Parallel)
@@ -190,15 +192,16 @@ jobs:
       - name: Publish Hub
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: docker/bake-action@v5
+        env:
+          REPO_PREFIX: ${{ secrets.DOCKER_HUB_USER }}/gemini-cli-toolbox
+          RELEASE_TYPE: suffix
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+          ENABLE_ATTESTATIONS: true
         with:
           targets: hub
           set: |
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
-            REPO_PREFIX=${{ secrets.DOCKER_HUB_USER }}/gemini-cli-toolbox
-            RELEASE_TYPE=suffix
-            IMAGE_TAG=${{ steps.tag.outputs.tag }}
-            ENABLE_ATTESTATIONS=true
           push: true
 
       - name: Publish CLI & Preview
@@ -210,25 +213,21 @@ jobs:
           VERSION=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli:$TAG gemini --version | tr -d '\r')
           PREVIEW_VER=$(docker run --rm --entrypoint="" gemini-cli-toolbox/cli-preview:$TAG gemini --version | tr -d '\r')
           
+          # Use export to pass variables to Bake via environment
+          export REPO_PREFIX="$REPO"
+          export RELEASE_TYPE="suffix"
+          export IMAGE_TAG="$TAG"
+          export ENABLE_ATTESTATIONS="true"
+
           # Use bake to push both with their respective versions
-          docker buildx bake cli \
+          GEMINI_VERSION="$VERSION" docker buildx bake cli \
             --set "*.cache-from=type=gha" \
             --set "*.cache-to=type=gha,mode=max" \
-            --set "REPO_PREFIX=$REPO" \
-            --set "RELEASE_TYPE=suffix" \
-            --set "IMAGE_TAG=$TAG" \
-            --set "GEMINI_VERSION=$VERSION" \
-            --set "ENABLE_ATTESTATIONS=true" \
             --push
             
-          docker buildx bake cli-preview \
+          GEMINI_VERSION="$PREVIEW_VER" docker buildx bake cli-preview \
             --set "*.cache-from=type=gha" \
             --set "*.cache-to=type=gha,mode=max" \
-            --set "REPO_PREFIX=$REPO" \
-            --set "RELEASE_TYPE=suffix" \
-            --set "IMAGE_TAG=$TAG" \
-            --set "GEMINI_VERSION=$PREVIEW_VER" \
-            --set "ENABLE_ATTESTATIONS=true" \
             --push
 
       - name: Sign Images (SLSA)
