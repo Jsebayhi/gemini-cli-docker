@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ app/
 COPY run.py .
-COPY gemini-toolbox /usr/local/bin/
+COPY --from=bin gemini-toolbox /usr/local/bin/
 RUN chmod +x /usr/local/bin/gemini-toolbox
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh

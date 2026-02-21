@@ -1,103 +1,48 @@
 # Master Makefile
-# Orchestrates build tasks for all images in the repo
+# Single Source of Truth for Build, Lint, and Test
 
 # Default target
 .DEFAULT_GOAL := help
+
+# Detect Branch and Suffix Tag for image isolation
+CURRENT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+SAFE_BRANCH := $(shell echo $(CURRENT_BRANCH) | sed 's/[^a-zA-Z0-9]/-/g')
+
+# Human-First Defaults: Disable heavy SLSA attestations for local development.
+# The CI overrides this via environment variables or command-line args.
+export ENABLE_ATTESTATIONS ?= false
+
+ifeq ($(CURRENT_BRANCH),main)
+    export IMAGE_TAG := latest
+else
+    export IMAGE_TAG := latest-$(SAFE_BRANCH)
+endif
+
+# Detect if we need the advanced builder (only for SLSA/Attestations)
+# Local development defaults to the native 'default' driver for instant incremental builds.
+ifeq ($(ENABLE_ATTESTATIONS),true)
+    BAKE_BUILDER := gemini-builder
+    BAKE_FLAGS := --builder $(BAKE_BUILDER) --load
+else
+    BAKE_BUILDER := default
+    BAKE_FLAGS := --builder default --load
+endif
 
 .PHONY: help
 help:
 	@echo "Project Orchestration"
 	@echo "====================="
-	@echo "  make build         : Build ALL images (Parallelizable with -j)"
-	@echo "  make rebuild       : Force rebuild ALL images (Parallelizable with -j)"
+	@echo "  make build         : Build ALL images (Parallel via Docker Bake)"
+	@echo "  make check-build   : Fast validation (Build to cache, NO image export)"
+	@echo "  make rebuild       : Force rebuild ALL images from scratch"
+	@echo "  make lint          : Run all linters (ShellCheck, Ruff)"
+	@echo "  make test          : Run all tests (Bash, Hub)"
+	@echo "  make local-ci      : Run everything (Lint + Build + Test)"
 	@echo "  make scan          : Run security scan (Trivy)"
-	@echo "  make local-ci      : Run mandatory pre-PR checks (Lint & Test)"
-	@echo "  make docker-readme : Generate README_DOCKER.md with absolute links"
+	@echo "  make docker-readme : Generate README_DOCKER.md"
 	@echo "  make clean-cache   : Prune npm build cache"
-	@echo ""
-	@echo "Parallel Build Example:"
-	@echo "  make -j4 build"
 
-# --- Documentation ---
-
-.PHONY: docker-readme
-docker-readme:
-	@echo ">> Generating README_DOCKER.md..."
-	cp README.md README_DOCKER.md
-	# Replace relative links with absolute GitHub links
-	sed -i 's|(docs/|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/docs/|g' README_DOCKER.md
-	sed -i 's|(adr/|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/adr/|g' README_DOCKER.md
-	sed -i 's|(docs/CONTRIBUTING.md)|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/docs/CONTRIBUTING.md)|g' README_DOCKER.md
-
-# --- Build Targets (Incremental) ---
-
-.PHONY: build-base
-build-base:
-	@echo ">> Building gemini-base..."
-	$(MAKE) -C images/gemini-base build
-
-.PHONY: build-cli
-build-cli: build-base
-	@echo ">> Building gemini-cli (Light)..."
-	$(MAKE) -C images/gemini-cli build
-
-.PHONY: build-cli-preview
-build-cli-preview: build-base
-	@echo ">> Building gemini-cli-preview..."
-	$(MAKE) -C images/gemini-cli-preview build
-
-.PHONY: build-hub
-build-hub:
-	@echo ">> Building gemini-hub..."
-	$(MAKE) -C images/gemini-hub build
-
-# Main Build Entrypoint
-.PHONY: build
-build: build-cli build-cli-preview build-hub
-
-# --- Rebuild Targets (No Cache) ---
-
-.PHONY: rebuild-base
-rebuild-base:
-	@echo ">> Rebuilding gemini-base..."
-	$(MAKE) -C images/gemini-base rebuild
-
-.PHONY: rebuild-cli
-rebuild-cli: rebuild-base
-	@echo ">> Rebuilding gemini-cli..."
-	$(MAKE) -C images/gemini-cli rebuild
-
-.PHONY: rebuild-cli-preview
-rebuild-cli-preview: rebuild-base
-	@echo ">> Rebuilding gemini-cli-preview..."
-	$(MAKE) -C images/gemini-cli-preview rebuild
-
-.PHONY: rebuild-hub
-rebuild-hub:
-	@echo ">> Rebuilding gemini-hub..."
-	$(MAKE) -C images/gemini-hub rebuild
-
-# Main Rebuild Entrypoint
-.PHONY: rebuild
-rebuild: rebuild-cli rebuild-cli-preview rebuild-hub
-
-# --- Fast Update Targets (App Layer Only) ---
-
-.PHONY: rebuild-cli-only
-rebuild-cli-only:
-	@echo ">> Rebuilding gemini-cli (App Layer)..."
-	$(MAKE) -C images/gemini-cli rebuild
-
-.PHONY: rebuild-cli-preview-only
-rebuild-cli-preview-only:
-	@echo ">> Rebuilding gemini-cli-preview (App Layer)..."
-	$(MAKE) -C images/gemini-cli-preview rebuild
-
-# Rebuild only the applications (Parallelizable)
-.PHONY: rebuild-gemini-cli
-rebuild-gemini-cli: rebuild-cli-only rebuild-cli-preview-only
-
-# --- Quality Assurance (Lint & Test) ---
+# --- Quality Assurance ---
 
 .PHONY: lint
 lint: lint-shell lint-python
@@ -113,26 +58,24 @@ lint-python:
 	docker run --rm -v "$(shell pwd):/mnt" -w /mnt ghcr.io/astral-sh/ruff check images/gemini-hub
 
 .PHONY: test
-test: test-bash
-	$(MAKE) -C images/gemini-hub test
+test: test-bash test-hub
 
 .PHONY: test-bash
-test-bash: deps-bash
-	@echo ">> Building Bash Test Runner..."
-	docker build -t gemini-bash-tester tests/bash
-	@echo ">> Running Bash Automated Tests with Coverage (kcov)..."
-	@mkdir -p coverage/bash
+test-bash: setup-builder deps-bash
+	@echo ">> Running Bash Automated Tests (Tag: ${IMAGE_TAG}, Builder: $(BAKE_BUILDER))..."
+	docker buildx bake $(BAKE_FLAGS) bash-test
+	mkdir -p coverage/bash
 	docker run --rm \
 		--cap-add=SYS_PTRACE \
 		-v "$(shell pwd):/code" \
 		-w /code \
 		--entrypoint kcov \
-		gemini-bash-tester \
+		gemini-cli-toolbox/bash-test:${IMAGE_TAG} \
 		--include-path=/code/bin,/code/images \
 		/code/coverage/bash \
 		bats tests/bash
 	@echo ""
-	@echo ">> Bash Coverage Summary:"
+	@echo ">> Checking Bash Coverage (Threshold: 85%)..."
 	@REPORT_JSON=$$(find coverage/bash -name "coverage.json" | head -n 1); \
 	if [ -n "$$REPORT_JSON" ] && [ -f "$$REPORT_JSON" ]; then \
 		COVERAGE=$$(cat "$$REPORT_JSON" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['percent_covered'])"); \
@@ -146,7 +89,26 @@ test-bash: deps-bash
 	else \
 		echo ">> Warning: Coverage report not found."; \
 	fi
-	@echo ">> Detailed report: coverage/bash/index.html"
+
+.PHONY: test-hub
+test-hub: setup-builder
+	@echo ">> Running Gemini Hub Tests (Unit & Integration, Tag: ${IMAGE_TAG}, Builder: $(BAKE_BUILDER))..."
+	docker buildx bake $(BAKE_FLAGS) hub-test
+	mkdir -p coverage/python
+	docker run --rm \
+		-v "$(shell pwd)/coverage/python:/coverage" \
+		gemini-cli-toolbox/hub-test:${IMAGE_TAG} \
+		python3 -m pytest -n auto -vv \
+		--cov=app \
+		--cov-report=json:/coverage/coverage.json \
+		--cov-fail-under=90 \
+		tests/unit tests/integration
+
+.PHONY: test-hub-ui
+test-hub-ui:
+	@echo ">> Running Gemini Hub UI Tests (Playwright)..."
+	docker buildx bake $(BAKE_FLAGS) hub-test
+	docker run --rm gemini-cli-toolbox/hub-test:${IMAGE_TAG} python3 -m pytest -n auto --reruns 1 -vv tests/ui
 
 .PHONY: deps-bash
 deps-bash:
@@ -163,61 +125,81 @@ deps-bash:
 		mv tests/bash/libs/bats-assert-2.1.0 tests/bash/libs/bats-assert; \
 	fi
 
-.PHONY: test-ui
-test-ui:
-	$(MAKE) -C images/gemini-hub test-ui
+# --- Build Targets ---
 
-# --- Mandatory Pre-PR Check ---
-.PHONY: local-ci
-local-ci: lint test test-ui
-	@echo ">> All mandatory checks passed. Ready for PR."
+# Ensure we use a builder that supports attestations (docker-container driver)
+.PHONY: setup-builder
+setup-builder:
+	@if [ "$(BAKE_BUILDER)" = "gemini-builder" ]; then \
+		if ! docker buildx inspect gemini-builder > /dev/null 2>&1; then \
+			echo ">> Creating 'gemini-builder' (docker-container driver) for SLSA support..."; \
+			docker buildx create --name gemini-builder --driver docker-container; \
+		fi \
+	fi
 
-# --- CI Targets (Full Rebuild + Tag) ---
+.PHONY: build
+build: setup-builder
+	@echo ">> Building all images via Docker Bake (Builder: $(BAKE_BUILDER))..."
+	docker buildx bake $(BAKE_FLAGS)
 
-.PHONY: ci-cli
-ci-cli: rebuild-base
-	@echo ">> CI: Building & Tagging gemini-cli..."
-	$(MAKE) -C images/gemini-cli ci
+.PHONY: check-build
+check-build:
+	@echo ">> Rapid Validation (Build to cache, Builder: default)..."
+	docker buildx bake --builder default
 
-.PHONY: ci-preview
-ci-preview: rebuild-base
-	@echo ">> CI: Building & Tagging gemini-cli-preview..."
-	$(MAKE) -C images/gemini-cli-preview ci
+.PHONY: rebuild
+rebuild: setup-builder
+	@echo ">> Rebuilding all images from scratch (no cache, Builder: $(BAKE_BUILDER))..."
+	docker buildx bake $(BAKE_FLAGS) --no-cache
 
-.PHONY: ci-hub
-ci-hub:
-	@echo ">> CI: Building gemini-hub..."
-	$(MAKE) -C images/gemini-hub ci
+.PHONY: build-base
+build-base: setup-builder
+	@echo ">> Building gemini-base..."
+	docker buildx bake $(BAKE_FLAGS) base
 
-# Main CI Entrypoint
-.PHONY: ci
-ci: ci-cli ci-preview ci-hub
+.PHONY: build-hub
+build-hub: setup-builder
+	@echo ">> Building gemini-hub..."
+	docker buildx bake $(BAKE_FLAGS) hub
 
-.PHONY: print-image-cli
-print-image-cli:
-	@$(MAKE) -C images/gemini-cli -s print-image
+.PHONY: build-cli
+build-cli: setup-builder
+	@echo ">> Building gemini-cli..."
+	docker buildx bake $(BAKE_FLAGS) cli
 
-.PHONY: print-image-preview
-print-image-preview:
-	@$(MAKE) -C images/gemini-cli-preview -s print-image
+.PHONY: build-cli-preview
+build-cli-preview: setup-builder
+	@echo ">> Building gemini-cli-preview..."
+	docker buildx bake $(BAKE_FLAGS) cli-preview
 
-.PHONY: print-image-hub
-print-image-hub:
-	@$(MAKE) -C images/gemini-hub -s print-image
+.PHONY: build-test-images
+build-test-images: setup-builder
+	@echo ">> Building test runner images..."
+	docker buildx bake $(BAKE_FLAGS) bash-test hub-test
 
-# Security Scan (Delegate to components)
+# --- Security & Docs ---
+
 .PHONY: scan
 scan:
-	@echo ">> Scanning gemini-base..."
-	$(MAKE) -C images/gemini-base scan
-	@echo ">> Scanning gemini-cli..."
-	$(MAKE) -C images/gemini-cli scan
-	@echo ">> Scanning gemini-cli-preview..."
-	$(MAKE) -C images/gemini-cli-preview scan
-	@echo ">> Scanning gemini-hub..."
-	$(MAKE) -C images/gemini-hub scan
+	@echo ">> Scanning images (base, hub, cli)..."
+	@for img in "gemini-cli-toolbox/base:latest" "gemini-cli-toolbox/hub:latest" "gemini-cli-toolbox/cli:latest"; do \
+		docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+			-v "$(shell pwd)/.trivyignore:/.trivyignore" \
+			aquasec/trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed --ignorefile /.trivyignore $$img; \
+	done
+
+.PHONY: docker-readme
+docker-readme:
+	@echo ">> Generating README_DOCKER.md..."
+	cp README.md README_DOCKER.md
+	sed -i 's|(docs/|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/docs/|g' README_DOCKER.md
+	sed -i 's|(adr/|(https://github.com/Jsebayhi/gemini-cli-toolbox/blob/main/adr/|g' README_DOCKER.md
 
 .PHONY: clean-cache
 clean-cache:
 	@echo ">> Pruning gemini-npm-cache..."
 	docker builder prune --force --filter id=gemini-npm-cache
+
+.PHONY: local-ci
+local-ci: lint build test
+	@echo ">> All local checks passed."

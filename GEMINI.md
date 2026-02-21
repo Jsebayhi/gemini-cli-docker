@@ -12,20 +12,31 @@ A modular "Gemini CLI Toolbox" repository containing multiple self-contained Doc
 | `bin/` | **User Interface.** Wrapper scripts (`gemini-toolbox`) that users invoke directly. |
 | `images/` | **Components.** Source code for each Docker image. |
 | `images/gemini-cli/` | **Gemini CLI.** [See Component Context](images/gemini-cli/GEMINI.md) |
-| `Makefile` | **Orchestrator.** Master makefile for global build tasks. |
+| `Makefile` | **Single Source of Truth.** Master makefile for all build, lint, and test tasks. |
+| `docker-bake.hcl` | **Build Orchestrator.** Declarative parallel build configuration. |
 
 ## 3. Global Workflows
 
 ### Adding a New Tool
-1. Create `images/<new-tool>/`.
-2. Add `Dockerfile`, `Makefile`, and `GEMINI.md` specific to that tool.
-3. Add a wrapper script in `bin/`.
-4. Register the tool in the root `README.md`.
+1.  Create `images/<new-tool>/`.
+2.  Add `Dockerfile` and `GEMINI.md` specific to that tool.
+3.  Register the new image in `docker-bake.hcl` (add target and inheritance) and `Makefile` (add build/test shortcuts).
+4.  Add a wrapper script in `bin/`.
+5.  Register the tool in the root `README.md`.
 
-### Global Build
-```bash
-make build
-```
+### Building & Testing
+1.  **Local Development:** Use `make build-<tool>` or `make test-<tool>` from the root.
+2.  **Rapid Validation:** Use `make check-build` to verify Dockerfile syntax and compilation without exporting images to the local daemon (near-instant).
+3.  **Local CI:** Run `make local-ci` to execute linting, building, and testing in parity with the remote CI.
+4.  **Human-First Defaults:** SLSA attestations (SBOM/Provenance) are disabled by default locally to ensure maximum speed. Use `ENABLE_ATTESTATIONS=true` only when simulating official releases.
+5.  **Bake:** All Docker builds are orchestrated via `docker buildx bake`. Do not use `docker build` directly in scripts.
+
+### CI/CD & Security
+*   **Parallelism:** The CI is optimized for < 3 minutes via parallel GHA jobs and Docker Bake caching.
+*   **SLSA Compliance:** All official images generate SBOMs and Provenance metadata.
+*   **Keyless Signing:** Images published to Docker Hub are signed using Cosign (OIDC) to ensure integrity.
+*   **Release Logic:** Official releases (signing/publishing) occur on any `main` branch event that is NOT a PR (e.g., merge, schedule).
+
 
 ## 4. Core Mandates
 
