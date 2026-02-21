@@ -87,6 +87,9 @@ jobs:
             *.cache-to=type=gha,mode=max
           load: true
 
+      - name: Download Bash Test Dependencies
+        run: make deps-bash
+
       - name: Run Tests (Parallel)
         run: |
           echo "::group::Parallel Test Execution"
