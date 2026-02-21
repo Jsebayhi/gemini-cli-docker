@@ -1,6 +1,5 @@
 # Use our custom secure base image
-ARG BASE_TAG=latest
-FROM local-base-internal-build:${BASE_TAG}
+FROM local-base-internal-build
 
 # 1. Install Gemini CLI
 # Clean cache to save space
