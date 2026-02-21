@@ -76,44 +76,18 @@ jobs:
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
 
-      - name: Bake Base Image
+      # Turbo-parallel Bake step using default driver for easy target resolution
+      - name: Bake All Images (Parallel)
         uses: docker/bake-action@v5
         env:
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
           ENABLE_ATTESTATIONS: false
         with:
-          builder: ${{ steps.buildx.outputs.name }}
-          targets: base
+          targets: default
           set: |
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
-
-      # Turbo-parallel Bake step: Apps and Tests
-      - name: Bake App & Test Images (Parallel)
-        uses: docker/bake-action@v5
-        env:
-          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
-          ENABLE_ATTESTATIONS: false
-        with:
-          builder: ${{ steps.buildx.outputs.name }}
-          targets: hub, cli, cli-preview, hub-test, bash-test
-          set: |
-            *.cache-from=type=gha
-            *.cache-to=type=gha,mode=max
-
-      # Explicitly load images needed for tests into the Docker daemon
-      - name: Load Test Images
-        uses: docker/bake-action@v5
-        env:
-          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
-          ENABLE_ATTESTATIONS: false
-        with:
-          targets: hub-test, bash-test, base, hub, cli, cli-preview
-          set: |
-            *.cache-from=type=gha
           load: true
 
       - name: Run Tests & Security Scan (Concurrent)
@@ -223,7 +197,6 @@ jobs:
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
           ENABLE_ATTESTATIONS: true
         with:
-          builder: ${{ steps.buildx.outputs.name }}
           targets: hub
           set: |
             *.cache-from=type=gha
@@ -247,13 +220,11 @@ jobs:
 
           # Use bake to push both with their respective versions
           GEMINI_VERSION="$VERSION" docker buildx bake cli \
-            --builder "${{ steps.buildx.outputs.name }}" \
             --set "*.cache-from=type=gha" \
             --set "*.cache-to=type=gha,mode=max" \
             --push
             
           GEMINI_VERSION="$PREVIEW_VER" docker buildx bake cli-preview \
-            --builder "${{ steps.buildx.outputs.name }}" \
             --set "*.cache-from=type=gha" \
             --set "*.cache-to=type=gha,mode=max" \
             --push
