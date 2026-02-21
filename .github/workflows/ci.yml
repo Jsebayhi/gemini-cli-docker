@@ -97,6 +97,7 @@ jobs:
           docker run --rm \
             --cap-add=SYS_PTRACE \
             -v "$(pwd):/code" \
+            -v "$(pwd)/tests/bash/libs:/code/tests/bash/libs" \
             -w /code \
             --entrypoint kcov \
             gemini-cli-toolbox/bash-test:$TAG \
