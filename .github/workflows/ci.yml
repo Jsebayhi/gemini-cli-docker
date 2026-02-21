@@ -83,18 +83,29 @@ jobs:
           TAG="${{ steps.tag.outputs.tag }}"
           
           # Run Bash Automated Tests
+          # Note: libs are already inside the image at /code/tests/bash/libs
+          # We mount individual directories to avoid hiding the pre-built libs
           docker run --rm \
             --cap-add=SYS_PTRACE \
             -v "$(pwd)/bin:/code/bin" \
             -v "$(pwd)/images:/code/images" \
-            -v "$(pwd)/tests/bash:/code/tests/bash" \
+            -v "$(pwd)/tests/bash/test_entrypoint_cli.bats:/code/tests/bash/test_entrypoint_cli.bats" \
+            -v "$(pwd)/tests/bash/test_entrypoint_hub.bats:/code/tests/bash/test_entrypoint_hub.bats" \
+            -v "$(pwd)/tests/bash/test_helper.bash:/code/tests/bash/test_helper.bash" \
+            -v "$(pwd)/tests/bash/test_hub_journeys.bats:/code/tests/bash/test_hub_journeys.bats" \
+            -v "$(pwd)/tests/bash/test_hub_unit.bats:/code/tests/bash/test_hub_unit.bats" \
+            -v "$(pwd)/tests/bash/test_hub.bats:/code/tests/bash/test_hub.bats" \
+            -v "$(pwd)/tests/bash/test_toolbox_fidelity.bats:/code/tests/bash/test_toolbox_fidelity.bats" \
+            -v "$(pwd)/tests/bash/test_toolbox_journeys.bats:/code/tests/bash/test_toolbox_journeys.bats" \
+            -v "$(pwd)/tests/bash/test_toolbox_unit.bats:/code/tests/bash/test_toolbox_unit.bats" \
+            -v "$(pwd)/tests/bash/test_toolbox.bats:/code/tests/bash/test_toolbox.bats" \
             -v "$(pwd)/coverage/bash:/code/coverage/bash" \
             -w /code \
             --entrypoint kcov \
             gemini-cli-toolbox/bash-test:$TAG \
             --include-path=/code/bin,/code/images \
             /code/coverage/bash \
-            bats tests/bash/test_toolbox.bats tests/bash/test_hub.bats > tests-bash.log 2>&1 &
+            bats tests/bash > tests-bash.log 2>&1 &
           BASH_PID=$!
 
           # Run Hub Automated Tests
@@ -107,7 +118,20 @@ jobs:
             tests/unit tests/integration > tests-hub.log 2>&1 &
           HUB_PID=$!
 
-          # Wait for ALL parallel processes
+          # Parallel Security Scan
+          images=(
+            "gemini-cli-toolbox/base:$TAG" 
+            "gemini-cli-toolbox/hub:$TAG" 
+            "gemini-cli-toolbox/cli:$TAG" 
+            "gemini-cli-toolbox/cli-preview:$TAG"
+          )
+          for img in "${images[@]}"; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$(pwd)/.trivyignore:/.trivyignore" \
+              aquasec/trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed --ignorefile /.trivyignore "$img" > "scan-${img//\//-}.log" 2>&1 &
+          done
+
+          # Wait for ALL parallel processes (Tests + Scans)
           FAIL=0
           for pid in $(jobs -p); do
             wait "$pid" || FAIL=1
@@ -116,6 +140,12 @@ jobs:
           if [ $FAIL -ne 0 ]; then
             cat tests-bash.log
             cat tests-hub.log
+            for f in scan-*.log; do
+               if [ -f "$f" ]; then
+                 echo "Scan Log: $f"
+                 cat "$f"
+               fi
+            done
             exit 1
           fi
 
