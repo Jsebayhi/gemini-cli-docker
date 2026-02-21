@@ -124,10 +124,23 @@ jobs:
           
           echo "::group::Parallel Test & Scan Execution"
           # Run Bash Automated Tests
-          # Note: libs are already inside the image
+          # Note: libs are already inside the image at /code/tests/bash/libs
+          # We mount individual directories to avoid hiding the pre-built libs
           docker run --rm \
             --cap-add=SYS_PTRACE \
-            -v "$(pwd):/code" \
+            -v "$(pwd)/bin:/code/bin" \
+            -v "$(pwd)/images:/code/images" \
+            -v "$(pwd)/tests/bash/test_entrypoint_cli.bats:/code/tests/bash/test_entrypoint_cli.bats" \
+            -v "$(pwd)/tests/bash/test_entrypoint_hub.bats:/code/tests/bash/test_entrypoint_hub.bats" \
+            -v "$(pwd)/tests/bash/test_helper.bash:/code/tests/bash/test_helper.bash" \
+            -v "$(pwd)/tests/bash/test_hub_journeys.bats:/code/tests/bash/test_hub_journeys.bats" \
+            -v "$(pwd)/tests/bash/test_hub_unit.bats:/code/tests/bash/test_hub_unit.bats" \
+            -v "$(pwd)/tests/bash/test_hub.bats:/code/tests/bash/test_hub.bats" \
+            -v "$(pwd)/tests/bash/test_toolbox_fidelity.bats:/code/tests/bash/test_toolbox_fidelity.bats" \
+            -v "$(pwd)/tests/bash/test_toolbox_journeys.bats:/code/tests/bash/test_toolbox_journeys.bats" \
+            -v "$(pwd)/tests/bash/test_toolbox_unit.bats:/code/tests/bash/test_toolbox_unit.bats" \
+            -v "$(pwd)/tests/bash/test_toolbox.bats:/code/tests/bash/test_toolbox.bats" \
+            -v "$(pwd)/coverage/bash:/code/coverage/bash" \
             -w /code \
             --entrypoint kcov \
             gemini-cli-toolbox/bash-test:$TAG \
